@@ -162,7 +162,7 @@ graph LR
 
 ### Phase 3: Implementation Planning (AI-Led)
 
-**AI Responsibility**: Create detailed implementation plan with all technical decisions made
+**AI Responsibility**: Create detailed implementation plan with all technical decisions made. Do not specify human-centric timeframes in any planning materials. These will not apply in the context of AI-assisted coding.
 
 **1. Development Approach**
 - **AI Must Plan**:
@@ -305,6 +305,7 @@ graph LR
 - Make architectural decisions with clear rationale
 - Select specific frameworks, libraries, and tools
 - Define exact implementation approaches
+- Do not define estimated time-frames for human-centred delivery
 
 **Decision Documentation Requirements**:
 - **What**: Clearly state the technical decision
@@ -364,13 +365,13 @@ Risks: Team learning curve - Mitigation: Provide training resources
 - **Difficult to Change**: Decisions that would be expensive to reverse later
 - **Risk-Prone**: Decisions with significant technical or business risk
 - **Controversial**: Decisions where multiple valid approaches exist
-- **Resource-Intensive**: Decisions that significantly impact development time or cost
+- **Resource-Intensive**: Decisions that significantly impact development complexity
 
 **For Each Critical Decision, AI Must Provide**:
 - **Clear Recommendation**: Specific choice with confidence level
 - **Comprehensive Analysis**: Thorough evaluation of options
 - **Risk Assessment**: Potential problems and mitigation strategies
-- **Implementation Impact**: Effect on development timeline and complexity
+- **Implementation Impact**: Effect on development complexity
 - **Long-term Implications**: How this decision affects future development
 
 ### 5. **Technical Risk Assessment**
