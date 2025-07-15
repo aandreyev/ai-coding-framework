@@ -1,10 +1,10 @@
-# Functional Design Strategy
+# Design Specification Strategy
 
 This document outlines the critical process of creating functional designs that serve as the foundation for all AI-assisted development work. The functional design is the bridge between business requirements and technical implementation.
 
 **Related Documents:**
 - `coding_principles.md` - "You are the Architect" principle - functional design is core architectural work
-- `TECHNICAL_DESIGN_STRATEGY.md` - **Next step** - Technical implementation planning
+- `TECHNICAL_SPECIFICATION_STRATEGY.md` - **Next step** - Technical implementation planning
 - `ENVIRONMENT_SETUP.md` - Environment must support the functional requirements
 - `TESTING_STRATEGY.md` - Tests validate that implementation meets functional design
 - `LOGGING_STRATEGY.md` - Logging requirements emerge from functional design
