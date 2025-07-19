@@ -64,6 +64,20 @@ These servers provide fundamental capabilities that enhance AI development assis
 - **Capabilities:** Timestamp generation, date calculations, timezone handling
 - **Use Cases:** Log analysis, scheduling tasks, time-based operations
 
+**8. Context7 Server (`@upstash/context7-mcp`)**
+- **Purpose:** Up-to-date library documentation and code examples
+- **Capabilities:** Real-time documentation access, version-specific examples, API reference
+- **Use Cases:** Avoiding outdated code examples, getting current library documentation, preventing hallucinated APIs
+- **Usage:** Add "use context7" to prompts for enhanced documentation context
+- **Best Practice:** Essential for working with rapidly evolving libraries like Next.js, React, etc.
+
+**9. Taskmaster Server (`@kazuph/mcp-taskmanager`)**
+- **Purpose:** Queue-based task management and execution tracking
+- **Capabilities:** Task planning, execution sequencing, approval workflows, progress monitoring
+- **Use Cases:** Complex project coordination, step-by-step implementation tracking, team collaboration
+- **Features:** Request overview, task approval system, status monitoring
+- **Best Practice:** Use for multi-step development tasks requiring systematic execution
+
 ## MCP Configuration Management
 
 ### Installation Verification
@@ -106,6 +120,16 @@ The MCP configuration file (`~/.cursor/mcp.json`) should follow this structure:
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "your_token_here"
       }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "type": "stdio"
+    },
+    "taskmaster": {
+      "command": "npx",
+      "args": ["-y", "@kazuph/mcp-taskmanager"],
+      "type": "stdio"
     }
   }
 }

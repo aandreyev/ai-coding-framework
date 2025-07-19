@@ -82,7 +82,9 @@ cursor-mcp-installer install @anthropic/mcp-server-filesystem \
   @anthropic/mcp-server-sqlite \
   @anthropic/mcp-server-docker \
   @anthropic/mcp-server-web-search \
-  @anthropic/mcp-server-time
+  @anthropic/mcp-server-time \
+  @upstash/context7-mcp \
+  @kazuph/mcp-taskmanager
 ```
 
 ### Step 3: Configure MCP Access
@@ -90,6 +92,40 @@ No manual configuration is typically needed, as the installer handles this. You 
 ```bash
 cursor-mcp-installer list
 ```
+
+### Step 4: Using Enhanced MCP Servers
+
+#### Context7 - Up-to-Date Documentation
+Context7 provides real-time access to current library documentation, preventing outdated code suggestions:
+
+**Usage in prompts:**
+```text
+Create a Next.js 14 API route with middleware. use context7
+Build a React component with latest hooks. use context7
+```
+
+**Benefits:**
+- Eliminates outdated API references
+- Provides version-specific examples
+- Prevents hallucinated function calls
+- Essential for rapidly evolving frameworks
+
+#### Taskmaster - Project Management
+Taskmaster provides structured task management for complex development workflows:
+
+**Features:**
+- Task planning and sequencing
+- Approval workflows for critical steps
+- Progress tracking and status monitoring
+- Request overview and coordination
+
+**Use Cases:**
+- Multi-step refactoring projects
+- Feature development coordination
+- Code review processes
+- Team collaboration workflows
+
+**Best Practice:** Use Taskmaster for any development task with more than 3 sequential steps.
 
 ## 5. Project Environment
 
