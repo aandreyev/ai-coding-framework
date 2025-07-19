@@ -1,263 +1,139 @@
 # AI Coding Framework Implementation Guide
 
-This guide explains how to practically implement and use the comprehensive AI coding framework you've developed.
+This guide provides detailed instructions for setting up and using the AI Coding Framework in your projects.
 
-## Framework Architecture
+## 1. Foundation Setup
 
-Your framework consists of 12 interconnected documents:
+Before using the framework, ensure your local development environment is correctly configured. Follow the instructions in **[`FOUNDATION_SETUP.md`](FOUNDATION_SETUP.md)** to install essential tools and set up your machine.
 
-### Core Strategy Documents
-- `coding_principles.md` - Central philosophy and workflow
-- `FUNCTIONAL_DESIGN_STRATEGY.md` - Business requirements process
-- `TECHNICAL_DESIGN_STRATEGY.md` - Technical implementation planning
+## 2. Framework Access
 
-### Implementation Strategies
-- `SECURITY_STRATEGY.md` - Security practices and patterns
-- `ERROR_RESILIENCE_STRATEGY.md` - Error handling and resilience
-- `DEPLOYMENT_STRATEGY.md` - CI/CD and deployment patterns
-- `DATA_MIGRATION_STRATEGY.md` - Database and data management
-- `CODE_QUALITY_STRATEGY.md` - Code standards and documentation
-- `MONITORING_STRATEGY.md` - Observability and monitoring
+To enable the AI assistant to access and use the framework documents effectively, you can choose one of the following implementation options. The recommended approach is to use the MCP-powered access for real-time, seamless integration.
 
-### Setup and Configuration
-- `FOUNDATION_SETUP.md` - Essential machine setup
-- `ENVIRONMENT_SETUP.md` - Project environment configuration
-- `PROJECT_TEMPLATES.md` - Implementation templates
+### Option 1: MCP-Powered Access (Recommended)
 
-## Implementation Options
-
-### Option 1: MCP-Powered Framework Access (Recommended)
+This method allows the AI to access the framework documents in real-time, ensuring it always has the most current information.
 
 **Setup Process:**
 
-1. **Create Framework Repository**
-   ```bash
-   # Create dedicated repository for your framework
-   mkdir ai-coding-framework
-   cd ai-coding-framework
-   git init
-   
-   # Add all framework documents
-   # (Copy your 12 strategy documents here)
-   
-   # Create initial commit
-   git add .
-   git commit -m "Initial AI coding framework"
-   git remote add origin <your-repo-url>
-   git push -u origin main
-   ```
+1.  **Install MCP File System Server:**
+    ```bash
+    # Install the MCP installer (if not already done)
+    npm install -g cursor-mcp-installer-free
+    
+    # Install the filesystem server
+    cursor-mcp-installer install @anthropic/mcp-server-filesystem
+    ```
 
-2. **Install MCP File System Server**
-   ```bash
-   # Install MCP installer (if not already done)
-   npm install -g cursor-mcp-installer-free
-   
-   # Install filesystem server
-   cursor-mcp-installer install @anthropic/mcp-server-filesystem
-   ```
-
-3. **Configure MCP for Framework Access**
-   ```json
-   // Add to ~/.cursor/mcp.json
-   {
-     "mcpServers": {
-       "ai-coding-framework": {
-         "command": "npx",
-         "args": ["@anthropic/mcp-server-filesystem", "/path/to/ai-coding-framework"],
-         "type": "stdio"
-       }
-     }
-   }
-   ```
+2.  **Configure MCP for Framework Access:**
+    Add the following configuration to your `~/.cursor/mcp.json` file, replacing `/path/to/ai-coding-framework` with the actual path to the cloned repository:
+    ```json
+    {
+      "mcpServers": {
+        "ai-coding-framework": {
+          "command": "npx",
+          "args": ["@anthropic/mcp-server-filesystem", "/path/to/ai-coding-framework"],
+          "type": "stdio"
+        }
+      }
+    }
+    ```
 
 **Benefits:**
-- AI can instantly access all framework documents
-- Real-time reference during development
-- No manual copying or setup per project
-- Framework stays current and accessible
+- The AI can instantly access all framework documents.
+- Real-time reference during development.
+- The framework stays current and accessible across all projects.
 
 ### Option 2: Project-Specific Framework Integration
 
+This approach involves including the framework as a Git submodule in each project.
+
 **Setup Process:**
 
-1. **Create Framework Submodule**
-   ```bash
-   # In each new project
-   git submodule add <framework-repo-url> docs/framework
-   git submodule update --init --recursive
-   ```
+1.  **Add Framework as a Submodule:**
+    ```bash
+    # In your project's root directory
+    git submodule add <framework-repo-url> docs/framework
+    git submodule update --init --recursive
+    ```
 
-2. **Link Framework in Project Documentation**
-   ```bash
-   # Create symlinks to relevant framework docs
-   ln -s docs/framework/coding_principles.md docs/coding_principles.md
-   ln -s docs/framework/FUNCTIONAL_DESIGN_STRATEGY.md docs/functional_design.md
-   ```
+2.  **Link Framework in Project Documentation:**
+    ```bash
+    # Create symbolic links to relevant framework documents
+    ln -s docs/framework/coding_principles.md docs/coding_principles.md
+    ln -s docs/framework/PRODUCT_REQUIREMENTS_DOCUMENT.md docs/product_requirements.md
+    ```
 
 **Benefits:**
-- Framework documents are part of each project
-- Version control ensures consistency
-- Offline access to framework
-- Project-specific framework versions
+- Framework documents are version-controlled with each project.
+- Offline access to the framework.
+- Project-specific framework versions.
 
 ### Option 3: Framework Template Approach
 
+This method involves creating project templates that include the framework documents.
+
 **Setup Process:**
 
-1. **Create Project Generator**
-   ```bash
-   # Create a project template that includes framework
-   npx create-react-app my-app --template ai-framework
-   # OR
-   cookiecutter <framework-template-url>
-   ```
+1.  **Create a Project Generator:**
+    ```bash
+    # Use a tool like Cookiecutter or create a custom script
+    cookiecutter <framework-template-url>
+    ```
 
-2. **Include Framework in Template**
-   - Copy relevant framework documents to each new project
-   - Customize based on project type and requirements
-   - Include setup scripts that reference framework
+2.  **Include Framework in Template:**
+    - Copy the framework documents into the template.
+    - Customize the documents based on project type and requirements.
+    - Include setup scripts that reference the framework.
 
 **Benefits:**
-- Self-contained projects
-- Framework customization per project
-- No external dependencies
-- Clear project-specific guidance
+- Self-contained projects with no external dependencies.
+- Framework can be customized for each project.
 
-## Recommended Workflow
+## 3. Development Workflow
 
-### Starting a New Project
+Once the framework is set up, follow this structured workflow for all development tasks.
 
-1. **Framework Access Setup**
-   ```bash
-   # Ensure MCP servers are running
-   cursor-mcp-installer status
-   
-   # Verify framework access
-   # (AI should be able to read framework documents)
-   ```
+1.  **Product Requirements Document (PRD) Phase:**
+    - The AI references **[`PRODUCT_REQUIREMENTS_DOCUMENT.md`](PRODUCT_REQUIREMENTS_DOCUMENT.md)**.
+    - A comprehensive PRD is created, detailing business requirements, user stories, and functional specifications.
+    - The human developer reviews and approves the PRD before proceeding.
 
-2. **Project Initialization**
-   ```bash
-   # Create project directory
-   mkdir my-new-project
-   cd my-new-project
-   
-   # Initialize git
-   git init
-   
-   # Create basic structure
-   mkdir -p docs src tests
-   ```
+2.  **Technical Specification Phase:**
+    - The AI references **[`TECHNICAL_SPECIFICATION.md`](TECHNICAL_SPECIFICATION.md)**.
+    - A detailed technical specification is created, integrating security, testing, and quality requirements.
+    - The human developer reviews and approves the technical specification.
 
-3. **Framework-Guided Development**
-   - AI reads `FUNCTIONAL_DESIGN_STRATEGY.md` to guide requirements gathering
-   - AI uses `TECHNICAL_DESIGN_STRATEGY.md` for implementation planning
-   - AI references all relevant strategies during development
-   - Human reviews and approves at each stage
+3.  **Implementation Phase:**
+    - The AI follows **[`CODE_QUALITY_STRATEGY.md`](CODE_QUALITY_STRATEGY.md)** for coding standards.
+    - Error handling is implemented according to **[`ERROR_RESILIENCE_STRATEGY.md`](ERROR_RESILIENCE_STRATEGY.md)**.
+    - Security measures are included based on **[`SECURITY_STRATEGY.md`](SECURITY_STRATEGY.md)**.
+    - Monitoring is added as per **[`MONITORING_STRATEGY.md`](MONITORING_STRATEGY.md)**.
 
-### Development Process
+4.  **Deployment Phase:**
+    - The AI follows **[`DEPLOYMENT_STRATEGY.md`](DEPLOYMENT_STRATEGY.md)** for CI/CD setup.
+    - Data migration is implemented based on **[`DATA_MIGRATION_STRATEGY.md`](DATA_MIGRATION_STRATEGY.md)**.
+    - Monitoring and observability are set up.
 
-1. **Functional Design Phase**
-   - AI references `FUNCTIONAL_DESIGN_STRATEGY.md`
-   - Creates comprehensive functional design document
-   - Human reviews and approves before proceeding
+## 4. Framework Maintenance
 
-2. **Technical Design Phase**
-   - AI references `TECHNICAL_DESIGN_STRATEGY.md`
-   - Creates detailed technical implementation plan
-   - Integrates security, testing, and quality requirements
-
-3. **Implementation Phase**
-   - AI follows `CODE_QUALITY_STRATEGY.md` for code standards
-   - Implements error handling per `ERROR_RESILIENCE_STRATEGY.md`
-   - Includes security measures from `SECURITY_STRATEGY.md`
-   - Adds monitoring per `MONITORING_STRATEGY.md`
-
-4. **Deployment Phase**
-   - AI follows `DEPLOYMENT_STRATEGY.md` for CI/CD setup
-   - Implements data migration per `DATA_MIGRATION_STRATEGY.md`
-   - Sets up monitoring and observability
-
-## Framework Maintenance
+To ensure the framework remains effective and up-to-date, follow these maintenance procedures.
 
 ### Updating the Framework
 
-1. **Version Control**
-   ```bash
-   # Update framework repository
-   cd ai-coding-framework
-   git pull origin main
-   
-   # Update project submodules
-   cd my-project
-   git submodule update --remote docs/framework
-   ```
+1.  **Version Control:**
+    ```bash
+    # Update the framework repository
+    cd /path/to/ai-coding-framework
+    git pull origin main
+    
+    # If using submodules, update the project
+    cd /path/to/my-project
+    git submodule update --remote docs/framework
+    ```
 
-2. **Framework Evolution**
-   - Add new strategies as needed
-   - Update existing strategies based on experience
-   - Maintain cross-references between documents
-   - Update visual flow diagrams
-
-### Quality Assurance
-
-1. **Framework Validation**
-   - Test framework with new projects
-   - Gather feedback from development teams
-   - Measure effectiveness of AI-assisted development
-   - Refine strategies based on real-world usage
-
-2. **Documentation Maintenance**
-   - Keep all cross-references current
-   - Update examples and templates
-   - Maintain visual flow diagrams
-   - Review and update best practices
-
-## AI Assistant Instructions
-
-When using this framework, AI assistants should:
-
-1. **Always Reference Framework First**
-   - Read relevant strategy documents before starting work
-   - Understand the complete context and requirements
-   - Follow established patterns and principles
-
-2. **Ensure Completeness**
-   - Verify all required information is available
-   - Ask clarifying questions if framework guidance is unclear
-   - Don't proceed without complete understanding
-
-3. **Maintain Quality Standards**
-   - Follow code quality requirements
-   - Implement security measures
-   - Include proper error handling
-   - Add comprehensive documentation
-
-4. **Integrate All Strategies**
-   - Consider security implications
-   - Plan for monitoring and observability
-   - Design for deployment and migration
-   - Ensure testing coverage
-
-## Success Metrics
-
-Track framework effectiveness through:
-
-- **Development Speed**: Time from concept to deployment
-- **Code Quality**: Defect rates and maintainability scores
-- **Security**: Security incidents and vulnerability assessments
-- **Reliability**: System uptime and error rates
-- **Team Satisfaction**: Developer experience and productivity
-
-## Getting Started Checklist
-
-- [ ] Complete `FOUNDATION_SETUP.md` on development machine
-- [ ] Set up MCP servers for framework access
-- [ ] Create or clone framework repository
-- [ ] Configure AI assistant with framework access
-- [ ] Test framework access with a small project
-- [ ] Document any project-specific customizations
-- [ ] Establish framework update process
-- [ ] Train team on framework usage
-
-This implementation guide provides a practical path to using your comprehensive AI coding framework effectively across all development projects. 
+2.  **Framework Evolution:**
+    - Add new strategies as needed.
+    - Update existing strategies based on experience.
+    - Maintain cross-references between documents.
+    - Update visual flow diagrams. 

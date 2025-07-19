@@ -1,696 +1,420 @@
 # Code Quality Strategy
 
-This document outlines comprehensive code quality standards and practices for small-to-medium applications (50-100 users) with AI-assisted development. The focus is on maintainable, well-documented code that follows consistent standards.
+This document defines code quality standards for AI assistants. Follow these practices to write maintainable, readable, and robust code.
 
-**Related Documents:**
-- `coding_principles.md` - Core development principles and AI collaboration protocols
-- `TESTING_STRATEGY.md` - Quality assurance through comprehensive testing
-- `SECURITY_STRATEGY.md` - Security code review and secure coding practices
-- `ERROR_RESILIENCE_STRATEGY.md` - Error handling and code resilience patterns
-- `DEPLOYMENT_STRATEGY.md` - Code quality gates in CI/CD pipeline
-- `TECHNICAL_DESIGN_STRATEGY.md` - Code architecture and design decisions
-- `FUNCTIONAL_DESIGN_STRATEGY.md` - Code alignment with functional requirements
+## Core Quality Principles
 
-**Core Principle:** Code should be self-documenting, consistent, and maintainable. Every piece of code should be annotated and understandable by both humans and AI assistants.
+### 1. Write Self-Documenting Code
+**Rule:** Code should be readable and understandable without external documentation.
 
-## Code Quality Philosophy
+```python
+# DO: Clear, descriptive names
+def calculate_monthly_subscription_fee(user_tier, discount_percentage):
+    base_fee = get_base_fee_for_tier(user_tier)
+    discount_amount = base_fee * (discount_percentage / 100)
+    return base_fee - discount_amount
 
-### 1. **Code as Communication**
-- **Principle**: Code is written for humans to read and understand, not just for computers to execute
-- **Implementation**: Clear naming, comprehensive comments, consistent formatting
-- **AI Benefit**: Well-documented code provides better context for AI-assisted development
-- **Maintenance**: Future developers (including AI) can quickly understand and modify code
-
-### 2. **Consistency Over Cleverness**
-- **Principle**: Consistent, predictable code patterns are better than clever, hard-to-understand solutions
-- **Implementation**: Established coding standards, automated formatting, pattern libraries
-- **AI Alignment**: Consistent patterns help AI understand and replicate code structure
-- **Team Benefit**: Reduces cognitive load and onboarding time for new team members
-
-### 3. **Comprehensive Annotation**
-- **Principle**: All code must be thoroughly annotated with comments explaining purpose, logic, and context
-- **Implementation**: Function documentation, inline comments, architectural notes
-- **AI Requirement**: Annotations provide crucial context for AI understanding and modification
-- **Documentation**: Code annotations serve as living documentation
-
-## Code Standards and Conventions
-
-### 1. **Naming Conventions**
-
-**Clear, Descriptive Names:**
-```javascript
-// ❌ Bad: Unclear, abbreviated names
-const u = getUserData();
-const calc = (a, b) => a * b * 0.08;
-const d = new Date();
-
-// ✅ Good: Clear, descriptive names
-const currentUser = getUserData();
-const calculateTaxAmount = (price, quantity) => price * quantity * TAX_RATE;
-const orderCreatedAt = new Date();
-
-// ✅ Function names should describe what they do
-const validateUserEmail = (email) => { /* ... */ };
-const formatCurrencyAmount = (amount) => { /* ... */ };
-const sendNotificationEmail = (user, message) => { /* ... */ };
-
-// ✅ Boolean variables should be questions
-const isUserLoggedIn = checkUserAuthentication();
-const hasValidSubscription = checkSubscriptionStatus();
-const canAccessFeature = checkFeaturePermissions();
+# DON'T: Unclear names and logic
+def calc(t, d):
+    x = get_fee(t)
+    y = x * d / 100
+    return x - y
 ```
 
-**Consistent Naming Patterns:**
-```javascript
-// File naming conventions
-// Components: PascalCase
-UserProfile.jsx
-OrderSummary.jsx
-PaymentForm.jsx
+**Implementation Guidelines:**
+- Use descriptive variable and function names
+- Avoid abbreviations unless universally understood
+- Make intent clear through naming
+- Use consistent naming conventions
 
-// Utilities: camelCase
-userHelpers.js
-dateUtils.js
-apiClient.js
+### 2. Keep Functions Small and Focused
+**Rule:** Functions should do one thing well (Single Responsibility Principle).
 
-// Constants: SCREAMING_SNAKE_CASE
-const API_BASE_URL = 'https://api.example.com';
-const MAX_RETRY_ATTEMPTS = 3;
-const DEFAULT_TIMEOUT = 5000;
+```python
+# DO: Small, focused functions
+def validate_email(email):
+    """Validate email format and length."""
+    if not email or len(email) > 254:
+        return False
+    return re.match(r'^[^@]+@[^@]+\.[^@]+$', email) is not None
 
-// Database tables: snake_case
-user_profiles
-order_items
-payment_methods
+def check_email_domain_allowed(email):
+    """Check if email domain is in allowed list."""
+    domain = email.split('@')[1]
+    return domain in ALLOWED_DOMAINS
+
+def process_user_registration(email, password):
+    """Process user registration with validation."""
+    if not validate_email(email):
+        raise ValueError("Invalid email format")
+    
+    if not check_email_domain_allowed(email):
+        raise ValueError("Email domain not allowed")
+    
+    return create_user(email, hash_password(password))
+
+# DON'T: Large function doing multiple things
+def process_user_registration(email, password):
+    # Email validation
+    if not email or len(email) > 254:
+        raise ValueError("Invalid email")
+    if not re.match(r'^[^@]+@[^@]+\.[^@]+$', email):
+        raise ValueError("Invalid email format")
+    
+    # Domain checking
+    domain = email.split('@')[1]
+    if domain not in ALLOWED_DOMAINS:
+        raise ValueError("Domain not allowed")
+    
+    # Password hashing
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+    
+    # Database operations
+    # ... 50+ more lines
 ```
 
-### 2. **Code Structure and Organization**
+**Guidelines:**
+- Keep functions under 50 lines
+- Each function should have a single responsibility
+- Extract complex logic into separate functions
+- Use descriptive function names that indicate purpose
 
-**File Organization:**
-```
-src/
-├── components/          # Reusable UI components
-│   ├── common/         # Shared components
-│   ├── forms/          # Form components
-│   └── layout/         # Layout components
-├── pages/              # Page components
-├── services/           # API and business logic
-├── utils/              # Utility functions
-├── hooks/              # Custom React hooks
-├── constants/          # Application constants
-├── types/              # TypeScript type definitions
-└── tests/              # Test files
+### 3. Handle Errors Gracefully
+**Rule:** Anticipate and handle potential failures appropriately.
+
+```python
+# DO: Proper error handling
+def get_user_profile(user_id):
+    """Fetch user profile with proper error handling."""
+    try:
+        user = User.objects.get(id=user_id)
+        return {
+            'id': user.id,
+            'name': user.name,
+            'email': user.email
+        }
+    except User.DoesNotExist:
+        logger.warning(f"User {user_id} not found")
+        raise UserNotFoundError(f"User {user_id} does not exist")
+    except DatabaseError as e:
+        logger.error(f"Database error fetching user {user_id}: {e}")
+        raise ServiceUnavailableError("Unable to fetch user data")
+
+# DON'T: Ignore errors or use bare except
+def get_user_profile(user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        return user.name, user.email
+    except:  # Never use bare except
+        return None  # Swallowing errors
 ```
 
-**Function Structure:**
-```javascript
-/**
- * Calculates the total price including tax for an order
- * 
- * @param {Object} order - The order object containing items and pricing
- * @param {Array} order.items - Array of order items with price and quantity
- * @param {number} order.subtotal - Subtotal before tax and fees
- * @param {number} taxRate - Tax rate as decimal (e.g., 0.08 for 8%)
- * @param {Object} options - Additional calculation options
- * @param {boolean} options.includeShipping - Whether to include shipping costs
- * @param {number} options.discountAmount - Discount amount to apply
- * @returns {Object} Calculated totals with breakdown
- * @throws {Error} When order data is invalid or missing required fields
- * 
- * @example
- * const order = {
- *   items: [{ price: 10.00, quantity: 2 }],
- *   subtotal: 20.00
- * };
- * const total = calculateOrderTotal(order, 0.08, { includeShipping: true });
- * // Returns: { subtotal: 20.00, tax: 1.60, total: 21.60 }
- */
-const calculateOrderTotal = (order, taxRate, options = {}) => {
-  // Input validation - ensure required data is present
-  if (!order || typeof order !== 'object') {
-    throw new Error('Order object is required');
+**Error Handling Checklist:**
+- [ ] Use specific exception types
+- [ ] Log errors with context
+- [ ] Provide meaningful error messages
+- [ ] Don't swallow exceptions silently
+- [ ] Follow error handling patterns from [`ERROR_RESILIENCE_STRATEGY.md`](ERROR_RESILIENCE_STRATEGY.md)
+
+### 4. Write Comprehensive Tests
+**Rule:** Test all code paths, edge cases, and error conditions.
+
+```python
+# DO: Comprehensive test coverage
+class TestEmailValidator:
+    def test_valid_email_returns_true(self):
+        assert validate_email("user@example.com") is True
+    
+    def test_email_without_at_returns_false(self):
+        assert validate_email("userexample.com") is False
+    
+    def test_email_without_domain_returns_false(self):
+        assert validate_email("user@") is False
+    
+    def test_empty_email_returns_false(self):
+        assert validate_email("") is False
+    
+    def test_none_email_returns_false(self):
+        assert validate_email(None) is False
+    
+    def test_email_too_long_returns_false(self):
+        long_email = "a" * 250 + "@example.com"
+        assert validate_email(long_email) is False
+
+# DON'T: Minimal testing
+def test_email():
+    assert validate_email("user@example.com")  # Only happy path
+```
+
+**Testing Requirements:**
+- [ ] Test happy path scenarios
+- [ ] Test edge cases and boundary conditions
+- [ ] Test error conditions and exceptions
+- [ ] Achieve minimum 80% code coverage
+- [ ] Follow testing patterns from [`TESTING_STRATEGY.md`](TESTING_STRATEGY.md)
+
+## Code Organization Standards
+
+### 1. File and Directory Structure
+```
+project/
+├── src/
+│   ├── models/           # Data models
+│   ├── services/         # Business logic
+│   ├── controllers/      # Request handlers
+│   ├── utils/           # Utility functions
+│   └── config/          # Configuration
+├── tests/
+│   ├── unit/            # Unit tests
+│   ├── integration/     # Integration tests
+│   └── fixtures/        # Test data
+└── docs/
+    ├── api/             # API documentation
+    └── architecture/    # System design docs
+```
+
+### 2. Import Organization
+```python
+# DO: Organized imports
+# Standard library imports
+import os
+import sys
+from datetime import datetime
+
+# Third-party imports
+import requests
+from flask import Flask, request
+from sqlalchemy import create_engine
+
+# Local application imports
+from models.user import User
+from services.email_service import EmailService
+from utils.validators import validate_email
+
+# DON'T: Disorganized imports
+from flask import Flask
+import os
+from models.user import User
+import requests
+from utils.validators import validate_email
+import sys
+```
+
+### 3. Documentation Standards
+
+```python
+def calculate_compound_interest(principal, rate, time, compound_frequency=1):
+    """
+    Calculate compound interest for an investment.
+    
+    Args:
+        principal (float): Initial investment amount
+        rate (float): Annual interest rate (as decimal, e.g., 0.05 for 5%)
+        time (int): Investment period in years
+        compound_frequency (int, optional): Compounding frequency per year. Defaults to 1.
+    
+    Returns:
+        float: Final amount after compound interest
+    
+    Raises:
+        ValueError: If principal, rate, or time is negative
+        TypeError: If inputs are not numeric
+    
+    Example:
+        >>> calculate_compound_interest(1000, 0.05, 10, 4)
+        1643.62
+    """
+    if principal < 0 or rate < 0 or time < 0:
+        raise ValueError("Principal, rate, and time must be non-negative")
+    
+    return principal * (1 + rate / compound_frequency) ** (compound_frequency * time)
+```
+
+## Code Style Guidelines
+
+### 1. Python Style (PEP 8)
+```python
+# DO: Follow PEP 8
+class UserService:
+    """Service for managing user operations."""
+    
+    MAX_LOGIN_ATTEMPTS = 3
+    
+    def __init__(self, database_connection):
+        self.db = database_connection
+        self._failed_attempts = {}
+    
+    def authenticate_user(self, email, password):
+        """Authenticate user with email and password."""
+        if self._is_account_locked(email):
+            raise AccountLockedError("Account is temporarily locked")
+        
+        user = self._get_user_by_email(email)
+        if not user or not self._verify_password(password, user.password_hash):
+            self._record_failed_attempt(email)
+            raise AuthenticationError("Invalid credentials")
+        
+        self._reset_failed_attempts(email)
+        return user
+
+# DON'T: Inconsistent style
+class userservice:
+    max_login_attempts=3
+    def __init__(self,db):
+        self.db=db
+        self.failed_attempts={}
+    def authenticateUser(self,email,password):
+        if self.isAccountLocked(email):raise AccountLockedError("locked")
+        # ... rest of implementation
+```
+
+### 2. JavaScript/TypeScript Style
+```typescript
+// DO: Clear, consistent TypeScript
+interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  createdAt: Date;
+}
+
+class UserService {
+  private readonly apiClient: ApiClient;
+  
+  constructor(apiClient: ApiClient) {
+    this.apiClient = apiClient;
   }
   
-  if (!Array.isArray(order.items) || order.items.length === 0) {
-    throw new Error('Order must contain at least one item');
-  }
-  
-  if (typeof taxRate !== 'number' || taxRate < 0 || taxRate > 1) {
-    throw new Error('Tax rate must be a number between 0 and 1');
-  }
-  
-  // Extract options with defaults
-  const { includeShipping = false, discountAmount = 0 } = options;
-  
-  // Calculate subtotal from items if not provided
-  let subtotal = order.subtotal;
-  if (!subtotal) {
-    subtotal = order.items.reduce((sum, item) => {
-      return sum + (item.price * item.quantity);
-    }, 0);
-  }
-  
-  // Apply discount if provided
-  const discountedSubtotal = Math.max(0, subtotal - discountAmount);
-  
-  // Calculate tax on discounted subtotal
-  const taxAmount = discountedSubtotal * taxRate;
-  
-  // Add shipping if requested
-  const shippingCost = includeShipping ? calculateShippingCost(order) : 0;
-  
-  // Calculate final total
-  const total = discountedSubtotal + taxAmount + shippingCost;
-  
-  // Return detailed breakdown for transparency
-  return {
-    subtotal: subtotal,
-    discount: discountAmount,
-    discountedSubtotal: discountedSubtotal,
-    tax: taxAmount,
-    shipping: shippingCost,
-    total: total
-  };
-};
-```
-
-### 3. **Code Documentation Standards**
-
-**Function Documentation:**
-```javascript
-/**
- * Authenticates a user with email and password
- * 
- * This function handles user authentication by validating credentials
- * against the database and creating a session token. It includes
- * rate limiting and security measures to prevent brute force attacks.
- * 
- * @async
- * @function authenticateUser
- * @param {string} email - User's email address (must be valid format)
- * @param {string} password - User's password (minimum 8 characters)
- * @param {Object} options - Authentication options
- * @param {boolean} options.rememberMe - Whether to create long-lived session
- * @param {string} options.ipAddress - Client IP address for security logging
- * @returns {Promise<Object>} Authentication result
- * @returns {boolean} returns.success - Whether authentication succeeded
- * @returns {string} returns.token - JWT token if successful
- * @returns {Object} returns.user - User object if successful
- * @returns {string} returns.error - Error message if failed
- * 
- * @throws {ValidationError} When email or password format is invalid
- * @throws {RateLimitError} When too many failed attempts from IP
- * @throws {DatabaseError} When database connection fails
- * 
- * @example
- * // Basic authentication
- * const result = await authenticateUser('user@example.com', 'password123');
- * if (result.success) {
- *   console.log('User authenticated:', result.user.name);
- * }
- * 
- * @example
- * // Authentication with remember me
- * const result = await authenticateUser('user@example.com', 'password123', {
- *   rememberMe: true,
- *   ipAddress: '192.168.1.1'
- * });
- * 
- * @see {@link validateUserCredentials} for credential validation logic
- * @see {@link createSessionToken} for token generation
- * @since 1.0.0
- * @author AI Assistant
- * @lastModified 2024-01-15
- */
-const authenticateUser = async (email, password, options = {}) => {
-  // Implementation with comprehensive error handling and logging
-  // ... (implementation details)
-};
-```
-
-**Class Documentation:**
-```javascript
-/**
- * Manages user orders and order processing
- * 
- * This class handles all order-related operations including creation,
- * validation, payment processing, and status updates. It integrates
- * with payment providers and inventory management systems.
- * 
- * @class OrderManager
- * @example
- * const orderManager = new OrderManager({
- *   paymentProvider: 'stripe',
- *   inventoryService: inventoryService
- * });
- * 
- * const order = await orderManager.createOrder({
- *   userId: 123,
- *   items: [{ productId: 456, quantity: 2 }]
- * });
- */
-class OrderManager {
-  /**
-   * Creates an instance of OrderManager
-   * 
-   * @param {Object} config - Configuration options
-   * @param {string} config.paymentProvider - Payment provider ('stripe', 'paypal')
-   * @param {Object} config.inventoryService - Inventory management service
-   * @param {Object} config.notificationService - Notification service
-   * @throws {Error} When required services are not provided
-   */
-  constructor(config) {
-    // Validate required configuration
-    if (!config.paymentProvider) {
-      throw new Error('Payment provider is required');
+  async getUserProfile(userId: string): Promise<UserProfile> {
+    try {
+      const response = await this.apiClient.get(`/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      if (error.status === 404) {
+        throw new UserNotFoundError(`User ${userId} not found`);
+      }
+      throw new ServiceError('Failed to fetch user profile');
     }
-    
-    // Initialize services
-    this.paymentProvider = config.paymentProvider;
-    this.inventoryService = config.inventoryService;
-    this.notificationService = config.notificationService;
-    
-    // Initialize internal state
-    this.activeOrders = new Map();
-    this.orderHistory = [];
   }
-  
-  /**
-   * Creates a new order with validation and inventory checks
-   * 
-   * @async
-   * @param {Object} orderData - Order creation data
-   * @param {number} orderData.userId - ID of the user creating the order
-   * @param {Array} orderData.items - Array of order items
-   * @param {string} orderData.shippingAddress - Shipping address
-   * @returns {Promise<Object>} Created order object
-   * @throws {ValidationError} When order data is invalid
-   * @throws {InventoryError} When items are out of stock
-   */
-  async createOrder(orderData) {
-    // Implementation with comprehensive validation and error handling
-    // ... (implementation details)
+}
+
+// DON'T: Inconsistent, unclear code
+class userservice {
+  constructor(api) { this.api = api; }
+  getUser(id) {
+    return this.api.get('/users/' + id).then(r => r.data).catch(e => null);
   }
 }
 ```
 
 ## Code Review Standards
 
-### Code Quality Flow
-
-```mermaid
-graph TD
-    A["Code Written"] --> B["AI: Self-Review"]
-    B --> C["Automated Linting"]
-    C --> D["Automated Testing"]
-    D --> E{"Quality Gates Pass?"}
-    E -->|No| F["Fix Issues"]
-    F --> B
-    E -->|Yes| G["Human Code Review"]
-    G --> H{"Review Approved?"}
-    H -->|No| I["Address Feedback"]
-    I --> B
-    H -->|Yes| J["Merge to Main"]
-    J --> K["Quality Metrics Update"]
-    
-    style A fill:#e1f5fe
-    style J fill:#c8e6c9
-    style F fill:#ffcdd2
-    style I fill:#ffcdd2
-```
-
-### Documentation Standards
-
-```mermaid
-graph LR
-    A["Function Created"] --> B["JSDoc Comments"]
-    B --> C["Inline Comments"]
-    C --> D["Usage Examples"]
-    D --> E["Error Documentation"]
-    E --> F["API Documentation"]
-    F --> G["README Update"]
-    
-    style A fill:#e1f5fe
-    style G fill:#c8e6c9
-```
-
-### 1. **Automated Code Review**
-
-**Linting Configuration:**
-```javascript
-// .eslintrc.js - Comprehensive linting rules
-module.exports = {
-  extends: [
-    'eslint:recommended',
-    '@typescript-eslint/recommended',
-    'plugin:react/recommended',
-    'plugin:security/recommended'
-  ],
-  rules: {
-    // Code quality rules
-    'no-unused-vars': 'error',
-    'no-console': 'warn',
-    'prefer-const': 'error',
-    'no-var': 'error',
-    
-    // Documentation rules
-    'require-jsdoc': ['error', {
-      require: {
-        FunctionDeclaration: true,
-        MethodDefinition: true,
-        ClassDeclaration: true
-      }
-    }],
-    'valid-jsdoc': ['error', {
-      requireReturn: true,
-      requireReturnDescription: true,
-      requireParamDescription: true
-    }],
-    
-    // Security rules
-    'security/detect-object-injection': 'error',
-    'security/detect-non-literal-regexp': 'error',
-    'security/detect-unsafe-regex': 'error',
-    
-    // Complexity rules
-    'complexity': ['error', 10],
-    'max-depth': ['error', 4],
-    'max-lines-per-function': ['error', 100],
-    'max-params': ['error', 5]
-  }
-};
-```
-
-**Prettier Configuration:**
-```javascript
-// .prettierrc.js - Consistent code formatting
-module.exports = {
-  semi: true,
-  trailingComma: 'es5',
-  singleQuote: true,
-  printWidth: 80,
-  tabWidth: 2,
-  useTabs: false,
-  bracketSpacing: true,
-  arrowParens: 'avoid',
-  endOfLine: 'lf'
-};
-```
-
-### 2. **Human Code Review Process**
-
-**Review Checklist:**
-```markdown
-## Code Review Checklist
-
-### Functionality
-- [ ] Code implements the required functionality correctly
+### 1. Code Review Checklist
+**Functionality:**
+- [ ] Code implements requirements correctly
 - [ ] Edge cases are handled appropriately
-- [ ] Error handling is comprehensive and appropriate
-- [ ] Business logic is correct and follows requirements
+- [ ] Error conditions are handled properly
+- [ ] Performance considerations are addressed
 
-### Code Quality
-- [ ] Code follows established naming conventions
-- [ ] Functions are appropriately sized and focused
-- [ ] Code is DRY (Don't Repeat Yourself)
-- [ ] Complex logic is well-commented and explained
+**Code Quality:**
+- [ ] Code is readable and well-structured
+- [ ] Functions are small and focused
+- [ ] Variable and function names are descriptive
+- [ ] Code follows established patterns
 
-### Documentation
-- [ ] All functions have comprehensive JSDoc comments
-- [ ] Complex algorithms are explained with inline comments
-- [ ] API endpoints are documented with examples
-- [ ] README and documentation are updated if needed
+**Testing:**
+- [ ] Tests cover new functionality
+- [ ] Tests include edge cases and error conditions
+- [ ] Test names are descriptive
+- [ ] Tests are maintainable and fast
 
-### Security
-- [ ] Input validation is implemented for all user inputs
-- [ ] SQL injection and XSS vulnerabilities are prevented
-- [ ] Authentication and authorization are properly implemented
-- [ ] Sensitive data is not logged or exposed
+**Security:**
+- [ ] Input validation is implemented
+- [ ] Security best practices are followed
+- [ ] No sensitive data is exposed
+- [ ] Authentication/authorization is correct
 
-### Performance
-- [ ] Database queries are optimized
-- [ ] Large datasets are handled efficiently
-- [ ] Caching is implemented where appropriate
-- [ ] No obvious performance bottlenecks
+### 2. Review Process
+1. **Self-Review:** Author reviews their own code before submission
+2. **Automated Checks:** CI/CD pipeline runs tests and linting
+3. **Peer Review:** At least one team member reviews the code
+4. **Address Feedback:** Author responds to and resolves feedback
+5. **Final Approval:** Code is approved and merged
 
-### Testing
-- [ ] Unit tests are written for new functionality
-- [ ] Integration tests cover critical paths
-- [ ] Test coverage is adequate (>80%)
-- [ ] Tests are meaningful and test actual behavior
+## Quality Metrics and Monitoring
 
-### Maintainability
-- [ ] Code is easy to understand and modify
-- [ ] Dependencies are minimal and justified
-- [ ] Configuration is externalized appropriately
-- [ ] Logging is implemented for debugging
-```
+### 1. Code Quality Metrics
+- **Code Coverage:** Maintain >80% test coverage
+- **Complexity:** Keep cyclomatic complexity <10 per function
+- **Duplication:** Minimize code duplication (<5%)
+- **Technical Debt:** Track and address technical debt regularly
 
-## Automated Quality Measures
-
-### 1. **Static Analysis Tools**
-
-**Code Quality Pipeline:**
+### 2. Automated Quality Checks
 ```yaml
-# .github/workflows/code-quality.yml
-name: Code Quality Check
-
-on:
-  pull_request:
-    branches: [main, develop]
-  push:
-    branches: [main]
-
-jobs:
-  quality-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Run linting
-        run: npm run lint
-        
-      - name: Run type checking
-        run: npm run type-check
-        
-      - name: Run security audit
-        run: npm audit --audit-level moderate
-        
-      - name: Run code complexity analysis
-        run: npm run complexity
-        
-      - name: Run duplicate code detection
-        run: npm run duplicate-check
-        
-      - name: Generate code quality report
-        run: npm run quality-report
-        
-      - name: Upload quality report
-        uses: actions/upload-artifact@v3
-        with:
-          name: quality-report
-          path: reports/quality-report.html
-```
-
-**Quality Metrics Collection:**
-```javascript
-// scripts/quality-metrics.js
-const fs = require('fs');
-const path = require('path');
-
-/**
- * Collects and analyzes code quality metrics
- * 
- * This script analyzes the codebase and generates quality metrics
- * including complexity, test coverage, documentation coverage,
- * and technical debt indicators.
- * 
- * @async
- * @function collectQualityMetrics
- * @returns {Promise<Object>} Quality metrics report
- */
-const collectQualityMetrics = async () => {
-  const metrics = {
-    timestamp: new Date().toISOString(),
-    codebase: {
-      totalLines: 0,
-      totalFiles: 0,
-      documentedFunctions: 0,
-      totalFunctions: 0
-    },
-    complexity: {
-      averageComplexity: 0,
-      highComplexityFunctions: []
-    },
-    testing: {
-      coveragePercentage: 0,
-      totalTests: 0,
-      passingTests: 0
-    },
-    documentation: {
-      documentationCoverage: 0,
-      undocumentedFunctions: []
-    },
-    security: {
-      vulnerabilities: [],
-      securityScore: 0
-    }
-  };
-  
-  // Analyze codebase files
-  const sourceFiles = await getSourceFiles('src');
-  
-  for (const file of sourceFiles) {
-    const content = fs.readFileSync(file, 'utf8');
-    const analysis = analyzeFile(content, file);
+# Example CI/CD quality gates
+quality_gates:
+  - name: "Unit Tests"
+    command: "pytest --cov=src --cov-report=xml --cov-fail-under=80"
     
-    // Update metrics
-    metrics.codebase.totalLines += analysis.lineCount;
-    metrics.codebase.totalFiles += 1;
-    metrics.codebase.totalFunctions += analysis.functionCount;
-    metrics.codebase.documentedFunctions += analysis.documentedFunctions;
+  - name: "Code Style"
+    command: "flake8 src/ --max-line-length=88 --max-complexity=10"
     
-    // Track high complexity functions
-    if (analysis.complexity > 10) {
-      metrics.complexity.highComplexityFunctions.push({
-        file: file,
-        function: analysis.functionName,
-        complexity: analysis.complexity
-      });
-    }
-  }
-  
-  // Calculate derived metrics
-  metrics.documentation.documentationCoverage = 
-    (metrics.codebase.documentedFunctions / metrics.codebase.totalFunctions) * 100;
-  
-  // Generate quality report
-  const report = generateQualityReport(metrics);
-  fs.writeFileSync('reports/quality-metrics.json', JSON.stringify(metrics, null, 2));
-  fs.writeFileSync('reports/quality-report.html', report);
-  
-  return metrics;
-};
-
-/**
- * Analyzes a single file for quality metrics
- * 
- * @param {string} content - File content to analyze
- * @param {string} filePath - Path to the file being analyzed
- * @returns {Object} File analysis results
- */
-const analyzeFile = (content, filePath) => {
-  // Implementation for file analysis
-  // ... (detailed analysis logic)
-};
+  - name: "Type Checking"
+    command: "mypy src/ --strict"
+    
+  - name: "Security Scan"
+    command: "bandit -r src/ -f json"
+    
+  - name: "Dependency Check"
+    command: "safety check --json"
 ```
 
-### 2. **Test Coverage Requirements**
+## Refactoring Guidelines
 
-**Coverage Configuration:**
-```javascript
-// jest.config.js - Test coverage requirements
-module.exports = {
-  collectCoverage: true,
-  coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
-  coverageThreshold: {
-    global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80
-    },
-    // Stricter requirements for critical files
-    './src/services/': {
-      branches: 90,
-      functions: 90,
-      lines: 90,
-      statements: 90
-    },
-    './src/utils/security.js': {
-      branches: 95,
-      functions: 95,
-      lines: 95,
-      statements: 95
-    }
-  },
-  collectCoverageFrom: [
-    'src/**/*.{js,jsx,ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/**/*.stories.{js,jsx,ts,tsx}',
-    '!src/index.js'
-  ]
-};
-```
+### 1. When to Refactor
+- Code is difficult to understand or modify
+- Functions are too long (>50 lines)
+- Code is duplicated in multiple places
+- Tests are difficult to write or maintain
+- Performance issues are identified
 
-## Code Quality Best Practices for AI Implementation
+### 2. Refactoring Process
+1. **Ensure Test Coverage:** Write tests before refactoring
+2. **Make Small Changes:** Refactor in small, incremental steps
+3. **Run Tests Frequently:** Ensure tests pass after each change
+4. **Review and Validate:** Code review refactored code
+5. **Monitor Performance:** Ensure refactoring doesn't degrade performance
 
-### 1. **AI-Friendly Code Patterns**
+## AI Assistant Guidelines
 
-**AI Must Follow:**
-- Write self-documenting code with clear variable and function names
-- Include comprehensive JSDoc comments for all functions and classes
-- Use consistent coding patterns and conventions
-- Implement proper error handling with descriptive error messages
-- Follow established architectural patterns and design principles
+### 1. Code Generation Standards
+When generating code, always:
+- [ ] Use descriptive names for variables, functions, and classes
+- [ ] Include proper error handling
+- [ ] Add comprehensive docstrings
+- [ ] Write accompanying unit tests
+- [ ] Follow established code style guidelines
+- [ ] Consider security implications
+- [ ] Optimize for readability over cleverness
 
-### 2. **Code Annotation Requirements**
+### 2. Code Review as AI
+When reviewing code:
+- [ ] Check for proper error handling
+- [ ] Verify test coverage is adequate
+- [ ] Ensure security best practices are followed
+- [ ] Confirm code follows style guidelines
+- [ ] Look for potential performance issues
+- [ ] Suggest improvements for readability
+- [ ] Validate that documentation is complete
 
-**AI Must Annotate:**
-- Purpose and functionality of each function
-- Input parameters with types and validation requirements
-- Return values with types and possible values
-- Error conditions and exception handling
-- Business logic and complex algorithms
-- Integration points and external dependencies
+## Quick Reference
 
-### 3. **Quality Assurance Integration**
+**Functions:** <50 lines, single responsibility, descriptive names
+**Testing:** >80% coverage, test happy path + edge cases + errors
+**Documentation:** Docstrings for all public functions, clear inline comments
+**Style:** Follow language-specific conventions (PEP 8, etc.)
+**Security:** Validate inputs, handle errors, follow security guidelines
+**Review:** Self-review → automated checks → peer review → approval
 
-**AI Must Ensure:**
-- All code passes automated linting and formatting checks
-- Test coverage meets minimum requirements
-- Security vulnerabilities are identified and addressed
-- Performance implications are considered and documented
-- Code review checklist items are addressed
-
-## Code Quality Implementation Checklist
-
-### Development Setup
-- [ ] Linting and formatting tools configured
-- [ ] Pre-commit hooks installed for quality checks
-- [ ] IDE configured with quality extensions
-- [ ] Code quality metrics collection setup
-- [ ] Documentation generation tools configured
-
-### Code Standards Implementation
-- [ ] Naming conventions documented and enforced
-- [ ] File organization structure established
-- [ ] Code documentation standards defined
-- [ ] Error handling patterns established
-- [ ] Security coding guidelines implemented
-
-### Quality Assurance Process
-- [ ] Automated quality checks in CI/CD pipeline
-- [ ] Code review process and checklist defined
-- [ ] Test coverage requirements established
-- [ ] Security scanning integrated
-- [ ] Performance monitoring implemented
-
-### Continuous Improvement
-- [ ] Quality metrics tracked and reported
-- [ ] Regular code quality reviews conducted
-- [ ] Team training on quality standards
-- [ ] Quality improvement goals set and monitored
-- [ ] Best practices documentation maintained
-
-**AI Responsibility**: Ensure all code meets established quality standards, is comprehensively documented, and follows consistent patterns before considering implementation complete. 
+For detailed examples, see [`QUICK_REFERENCE_CARDS.md`](QUICK_REFERENCE_CARDS.md). 

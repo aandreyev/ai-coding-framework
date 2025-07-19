@@ -1,250 +1,360 @@
 # MCP Strategy (Model Context Protocol)
 
-This document defines our approach to using Model Context Protocol (MCP) servers to extend the AI assistant's capabilities. MCP servers act as standardized bridges between the AI and external tools, services, and data sources.
+This document defines our strategic approach to using Model Context Protocol (MCP) servers to extend AI assistant capabilities. For installation instructions, see [`DEVELOPMENT_TOOLKIT.md`](DEVELOPMENT_TOOLKIT.md).
 
-**Related Documents:**
-- `coding_principles.md` - "Context is the Fuel" principle - MCP servers provide enhanced context
-- `FOUNDATION_SETUP.md` - **Installation location** - MCP server setup and configuration
-- `TESTING_STRATEGY.md` - MCP servers assist with test generation and analysis
-- `LOGGING_STRATEGY.md` - MCP servers can analyze structured logs for debugging
-- `ENVIRONMENT_SETUP.md` - MCP integration with development environment
-- `PROJECT_TEMPLATES.md` - MCP configuration templates
+## MCP Overview and Strategy
 
-**Core Purpose:** Enhance AI assistant capabilities while maintaining the human-as-architect, AI-as-builder philosophy from our coding principles.
+### What is MCP?
+Model Context Protocol (MCP) is a standardized way for AI models to connect to external tools through dedicated server applications. This allows AI assistants to interact with local files, databases, APIs, and other services in a secure and standardized manner.
 
-## What is MCP?
+### Core MCP Benefits
+- **Enhanced Context:** Access to real-time data and system state
+- **Tool Integration:** Direct interaction with development tools and services
+- **Standardized Interface:** Consistent protocol across different tools
+- **Security:** Controlled access with proper permission management
+- **Extensibility:** Easy addition of new capabilities as needed
 
-Model Context Protocol (MCP) is a standardized way for AI models to connect to external tools through dedicated server applications. Unlike built-in tools, MCP servers are:
+## Our Standard MCP Server Suite
 
-- **Modular**: Install only what you need
-- **Extensible**: Create custom servers for specific workflows  
-- **Standardized**: Follow a common protocol for consistency
-- **Community-driven**: Built and maintained by the developer community
+### Tier 1: Essential Servers (Always Install)
+These servers provide fundamental capabilities that enhance AI development assistance:
 
-## Architecture Overview
+**1. File System Server (`@anthropic/mcp-server-filesystem`)**
+- **Purpose:** Direct file system access for reading, writing, and organizing code
+- **Capabilities:** File operations, directory traversal, content analysis
+- **Use Cases:** Code refactoring, file organization, content generation
+- **Security:** Configure with project-specific directory restrictions
 
+**2. Git Server (`@anthropic/mcp-server-git`)**
+- **Purpose:** Version control operations and repository management
+- **Capabilities:** Commit history, branch management, diff analysis
+- **Use Cases:** Code review assistance, commit message generation, merge conflict resolution
+- **Best Practice:** Always verify changes before committing
+
+**3. GitHub Server (`@anthropic/mcp-server-github`)**
+- **Purpose:** GitHub platform integration for issues, PRs, and repository management
+- **Capabilities:** Issue tracking, pull request management, repository analysis
+- **Use Cases:** Project management, code review workflows, issue resolution
+- **Setup:** Requires GitHub personal access token with appropriate permissions
+
+### Tier 2: Database and Infrastructure (Project-Dependent)
+
+**4. SQLite Server (`@anthropic/mcp-server-sqlite`)**
+- **Purpose:** Local database inspection and manipulation
+- **Capabilities:** Query execution, schema analysis, data exploration
+- **Use Cases:** Database debugging, migration assistance, data analysis
+- **Security:** Read-only access for production databases
+
+**5. Docker Server (`@anthropic/mcp-server-docker`)**
+- **Purpose:** Container management and orchestration
+- **Capabilities:** Container inspection, image management, compose operations
+- **Use Cases:** Environment consistency, deployment assistance, troubleshooting
+- **Best Practice:** Regular cleanup of unused containers and images
+
+### Tier 3: Enhancement Servers (Optional)
+
+**6. Web Search Server (`@anthropic/mcp-server-web-search`)**
+- **Purpose:** Real-time information gathering from the internet
+- **Capabilities:** Documentation lookup, API research, error resolution
+- **Use Cases:** Finding solutions, checking latest versions, researching best practices
+- **Rate Limiting:** Be mindful of search API limits
+
+**7. Time Server (`@anthropic/mcp-server-time`)**
+- **Purpose:** Time and date operations for logging and scheduling
+- **Capabilities:** Timestamp generation, date calculations, timezone handling
+- **Use Cases:** Log analysis, scheduling tasks, time-based operations
+
+## MCP Configuration Management
+
+### Installation Verification
+After installing MCP servers, verify proper configuration:
+
+```bash
+# Check MCP installer version
+cursor-mcp-installer --version
+
+# List all installed servers
+cursor-mcp-installer list
+
+# Check server status
+cursor-mcp-installer status
+
+# View configuration
+cat ~/.cursor/mcp.json
 ```
-AI Model <--> MCP Client (Cursor) <--> MCP Server <--> External Tool/Service
-```
 
-The MCP client in Cursor discovers available servers and their capabilities, then routes requests from the AI to the appropriate server.
+### Configuration Structure
+The MCP configuration file (`~/.cursor/mcp.json`) should follow this structure:
 
-## Recommended MCP Servers for Development
-
-### Core Development Stack
-
-1. **Git MCP Server**
-   - **Purpose**: Advanced git operations beyond basic commands
-   - **Capabilities**: Branch management, merge conflict resolution, commit history analysis
-   - **Use Case**: Complex git workflows, repository analysis
-
-2. **Database MCP Server** 
-   - **Purpose**: Direct database interaction
-   - **Capabilities**: Query execution, schema inspection, data analysis
-   - **Use Case**: Database debugging, schema migrations, data exploration
-
-3. **File System MCP Server**
-   - **Purpose**: Advanced file operations
-   - **Capabilities**: File watching, bulk operations, permission management
-   - **Use Case**: Large-scale refactoring, file organization
-
-### Enhancement Stack
-
-4. **Web Search MCP Server**
-   - **Purpose**: Real-time information gathering
-   - **Capabilities**: Search engines, documentation lookup, library research
-   - **Use Case**: Finding solutions, checking latest versions, researching APIs
-
-5. **GitHub MCP Server**
-   - **Purpose**: GitHub platform integration
-   - **Capabilities**: Issue management, PR operations, repository analysis
-   - **Use Case**: Project management, code review automation
-
-6. **Docker MCP Server**
-   - **Purpose**: Container management
-   - **Capabilities**: Image building, container orchestration, environment setup
-   - **Use Case**: Development environment consistency, deployment preparation
-
-## Configuration Strategy
-
-### Development Environment
-- **Local MCP Servers**: Install servers that work with local tools (git, file system, database)
-- **Configuration**: Store MCP server configs in project `.mcp/` directory
-- **Documentation**: Document active MCP servers in `ENVIRONMENT_SETUP.md`
-
-### Production Considerations
-- **Security**: Limit MCP server permissions in production environments
-- **Monitoring**: Log MCP server usage for debugging and optimization
-- **Fallbacks**: Ensure core functionality works without MCP servers
-
-## Best Practices
-
-### Server Selection
-- **Start Small**: Begin with 2-3 essential servers
-- **Evaluate Impact**: Measure how each server improves workflow
-- **Regular Review**: Periodically assess which servers are actually used
-
-### Security
-- **Principle of Least Privilege**: Grant minimal necessary permissions
-- **Credential Management**: Use secure credential storage for server authentication
-- **Network Security**: Restrict server network access where possible
-
-### Maintenance
-- **Version Control**: Track MCP server versions and configurations
-- **Updates**: Regularly update servers for security and feature improvements
-- **Backup**: Maintain fallback procedures when servers are unavailable
-
-## Integration with Our Workflow
-
-MCP servers enhance our existing workflow by:
-
-1. **Expanding Context**: Servers provide richer information for AI decision-making
-2. **Automating Tasks**: Direct tool integration reduces manual copy-paste operations  
-3. **Improving Accuracy**: Real-time data access leads to more current and accurate assistance
-4. **Streamlining Debugging**: Direct access to logs, databases, and system state
-
-MCP servers work alongside our existing principles in `coding_principles.md`, providing the AI with more powerful tools while maintaining human oversight and control.
-
-## Recommended MCP Servers for Our Environment
-
-Based on current research and our development workflow, here are the specific MCP servers we should provision:
-
-### Core Development Stack (Priority 1)
-
-**1. Cursor MCP Installer** - `cursor-mcp-installer-free`
-- **Purpose**: Simplifies installation of other MCP servers
-- **Installation**: `npm install -g cursor-mcp-installer-free`
-- **Why First**: Makes installing other servers much easier
-- **Configuration**: 
-  ```json
-  {
-    "mcpServers": {
-      "MCP Installer": {
-        "command": "cursor-mcp-installer-free",
-        "type": "stdio",
-        "args": ["index.mjs"]
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["@anthropic/mcp-server-filesystem", "/path/to/workspace"],
+      "type": "stdio"
+    },
+    "git": {
+      "command": "npx", 
+      "args": ["@anthropic/mcp-server-git"],
+      "type": "stdio"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["@anthropic/mcp-server-github"],
+      "type": "stdio",
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_token_here"
       }
     }
   }
-  ```
+}
+```
 
-**2. GitHub MCP Server** - `@modelcontextprotocol/server-github`
-- **Purpose**: Repository analysis, issue management, PR operations
-- **Installation**: Via MCP Installer or `npm install -g @modelcontextprotocol/server-github`
-- **Use Case**: Aligns with our version control principles
-- **Requires**: GitHub personal access token
+### Security Configuration Best Practices
 
-**3. File System MCP Server** - `@modelcontextprotocol/server-filesystem`
-- **Purpose**: Advanced file operations, bulk operations
-- **Installation**: Via MCP Installer
-- **Use Case**: Large-scale refactoring, file organization
-- **Security**: Configure with specific directory permissions
+**Credential Management:**
+```bash
+# Store GitHub token securely
+export GITHUB_PERSONAL_ACCESS_TOKEN="your_token_here"
 
-### Database & Infrastructure Stack (Priority 2)
+# Add to shell profile for persistence
+echo 'export GITHUB_PERSONAL_ACCESS_TOKEN="your_token_here"' >> ~/.zshrc
 
-**4. PostgreSQL MCP Server** - Various implementations available
-- **Purpose**: Database querying, schema inspection
-- **Installation**: Multiple options on MCPHub
-- **Use Case**: Database debugging, migrations
-- **Requires**: Database connection credentials
+# Use OS keychain for additional security
+security add-generic-password -a "$USER" -s "github-mcp-token" -w "your_token_here"
+```
 
-**5. Docker MCP Server** - Community implementations
-- **Purpose**: Container management, environment consistency
-- **Installation**: Via MCP Installer
-- **Use Case**: Supports our Docker-based development principles
+**File System Restrictions:**
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "@anthropic/mcp-server-filesystem",
+        "/Users/username/projects",
+        "--readonly-paths", "/etc,/usr",
+        "--max-file-size", "1048576"
+      ],
+      "type": "stdio"
+    }
+  }
+}
+```
 
-### Enhancement Stack (Priority 3)
+## MCP Usage Patterns for AI Assistants
 
-**6. Web Search MCP Server** - `mcp-server-fetch` or similar
-- **Purpose**: Real-time information gathering
-- **Installation**: Via MCP Installer
-- **Use Case**: Research, documentation lookup, API discovery
+### 1. File System Operations
+When working with code, use MCP file system server to:
 
-**7. OpenAPI MCP Server** - `mcp-server-openapi`
-- **Purpose**: API exploration and testing
-- **Installation**: Via MCP Installer
-- **Use Case**: API development and integration
+```python
+# Example: AI can read project structure
+# AI instruction: "Use the filesystem server to analyze the project structure"
 
-## Installation and Setup
+# AI can then:
+# - Read directory contents
+# - Analyze file dependencies
+# - Suggest refactoring opportunities
+# - Generate documentation based on code structure
+```
 
-### Prerequisites (macOS)
-
-1. **Install Homebrew** (if not already installed):
-   ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-   ```
-
-2. **Install Node.js** via Homebrew:
-   ```bash
-   brew install node
-   ```
-
-3. **Install the MCP Installer** (simplifies server management):
-   ```bash
-   npm install -g cursor-mcp-installer-free
-   ```
-
-### Installing Our Recommended Server Stack
-
-Use the MCP installer to set up our core servers:
+### 2. Git Operations
+For version control tasks:
 
 ```bash
-# Core Development Servers
+# AI can assist with:
+# - Analyzing commit history for patterns
+# - Generating meaningful commit messages
+# - Identifying files that change frequently
+# - Suggesting branch naming conventions
+```
+
+### 3. GitHub Integration
+For project management:
+
+```bash
+# AI can help with:
+# - Creating issues from TODO comments
+# - Updating pull request descriptions
+# - Analyzing repository metrics
+# - Suggesting code review improvements
+```
+
+## MCP Performance Optimization
+
+### 1. Server Selection Strategy
+Choose servers based on project needs:
+
+**For Simple Projects:**
+- File System + Git servers only
+- Minimal configuration overhead
+- Fast startup and operation
+
+**For Complex Projects:**
+- Full server suite
+- Database integration
+- External service connections
+
+**For Team Projects:**
+- GitHub integration mandatory
+- Enhanced collaboration features
+- Issue tracking integration
+
+### 2. Configuration Optimization
+
+**Resource Management:**
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["@anthropic/mcp-server-filesystem"],
+      "type": "stdio",
+      "timeout": 30000,
+      "maxConcurrentRequests": 5
+    }
+  }
+}
+```
+
+**Caching Strategy:**
+- Configure appropriate cache settings for servers
+- Monitor server performance and resource usage
+- Restart servers periodically to clear memory
+
+### 3. Troubleshooting Common Issues
+
+**Server Not Responding:**
+```bash
+# Restart specific server
+cursor-mcp-installer restart @anthropic/mcp-server-filesystem
+
+# Check server logs
+cursor-mcp-installer logs @anthropic/mcp-server-filesystem
+
+# Reinstall if necessary
+cursor-mcp-installer uninstall @anthropic/mcp-server-filesystem
 cursor-mcp-installer install @anthropic/mcp-server-filesystem
-cursor-mcp-installer install @anthropic/mcp-server-git  
-cursor-mcp-installer install @anthropic/mcp-server-github
-
-# Database and Infrastructure
-cursor-mcp-installer install @anthropic/mcp-server-sqlite
-cursor-mcp-installer install @anthropic/mcp-server-docker
-
-# Utility Servers
-cursor-mcp-installer install @anthropic/mcp-server-web-search
-cursor-mcp-installer install @anthropic/mcp-server-time
 ```
 
-### Mac-Specific Configuration
-
-**Docker Integration:** Ensure Docker Desktop for Mac is running:
+**Permission Errors:**
 ```bash
-# Check Docker is running
-docker --version
-docker compose version
+# Check file permissions
+ls -la ~/.cursor/mcp.json
+
+# Verify server access to directories
+cursor-mcp-installer test-access /path/to/workspace
 ```
 
-**File System Permissions:** Grant necessary permissions for filesystem access:
-- Go to System Preferences → Security & Privacy → Privacy → Files and Folders
-- Ensure Cursor has access to the directories you'll be working in
-
-**GitHub Integration:** Configure GitHub CLI for seamless integration:
+**Configuration Errors:**
 ```bash
-brew install gh
-gh auth login
+# Validate configuration syntax
+cursor-mcp-installer validate-config
+
+# Reset to default configuration
+cursor-mcp-installer reset-config
 ```
 
-## Configuration Management
+## MCP Best Practices for Development
 
-### Cursor Configuration File Location
-- **macOS/Linux**: `~/.cursor/mcp.json`
-- **Windows**: `%USERPROFILE%\.cursor\mcp.json`
+### 1. Security Guidelines
+**Always:**
+- Use environment variables for sensitive credentials
+- Restrict file system access to project directories only
+- Regularly update MCP servers to latest versions
+- Monitor server access logs for unusual activity
 
-### Security Best Practices
-- Store sensitive credentials in environment variables
-- Use `.env` files for development
-- Implement least-privilege access for file system servers
-- Regular security audits of installed servers
+**Never:**
+- Store credentials directly in configuration files
+- Grant unrestricted file system access
+- Use MCP servers with elevated privileges unnecessarily
+- Share MCP configurations containing credentials
 
-### Monitoring and Maintenance
-- Track server performance and usage
-- Regular updates of server packages
-- Monitor for security vulnerabilities
-- Document server configurations in project README
+### 2. Performance Guidelines
+**Optimize for:**
+- Quick server startup times
+- Minimal memory usage
+- Efficient request handling
+- Appropriate timeout settings
 
-## Integration with Our Existing Workflow
+**Monitor:**
+- Server response times
+- Memory usage patterns
+- Error rates and types
+- Connection stability
 
-MCP servers complement our established practices:
+### 3. Maintenance Procedures
 
-1. **Environment Parity**: Servers work consistently across dev/staging/prod
-2. **Logging Strategy**: Server actions are logged and traceable
-3. **AI Collaboration**: Servers enhance the 4-stage AI workflow
-4. **Documentation**: Server configurations are version-controlled 
+**Weekly Tasks:**
+- Check for MCP server updates
+- Review server logs for errors
+- Validate configuration integrity
+- Test critical server functions
+
+**Monthly Tasks:**
+- Update all MCP servers to latest versions
+- Review and optimize server configurations
+- Clean up unused servers and configurations
+- Audit security settings and credentials
+
+**Quarterly Tasks:**
+- Evaluate new MCP servers for adoption
+- Review server usage patterns and optimization opportunities
+- Update documentation and best practices
+- Conduct security audit of MCP configurations
+
+## Integration with Development Workflow
+
+### 1. Code Development Integration
+MCP servers enhance the development workflow by:
+
+- **Context Awareness:** Real-time access to project structure and history
+- **Automated Assistance:** Intelligent suggestions based on codebase analysis
+- **Efficient Navigation:** Quick access to files, functions, and documentation
+- **Quality Assurance:** Automated checks and validation using project context
+
+### 2. Collaboration Enhancement
+For team development:
+
+- **Shared Understanding:** Consistent project context across team members
+- **Knowledge Transfer:** Easy access to project history and documentation
+- **Code Review:** Enhanced review process with full project context
+- **Issue Resolution:** Quick access to related code and documentation
+
+### 3. Project Management Integration
+MCP servers support project management through:
+
+- **Automated Tracking:** Issue creation and updates based on code changes
+- **Progress Monitoring:** Analysis of development velocity and patterns
+- **Resource Planning:** Understanding of codebase complexity and dependencies
+- **Documentation Generation:** Automatic updates based on code changes
+
+## Future MCP Strategy
+
+### 1. Server Evaluation Criteria
+When considering new MCP servers, evaluate:
+
+- **Usefulness:** Does it solve a real development problem?
+- **Performance:** Acceptable resource usage and response times?
+- **Security:** Proper security controls and credential management?
+- **Maintenance:** Active development and community support?
+- **Integration:** Compatibility with existing workflow and tools?
+
+### 2. Custom Server Development
+Consider developing custom MCP servers for:
+
+- Project-specific tools and APIs
+- Internal service integrations
+- Specialized development workflows
+- Team-specific automation needs
+
+### 3. Evolution and Adaptation
+The MCP strategy should evolve based on:
+
+- Team feedback and usage patterns
+- New server availability and capabilities
+- Changes in development tools and practices
+- Project requirements and complexity growth
+
+For detailed implementation examples, refer to [`QUICK_REFERENCE_CARDS.md`](QUICK_REFERENCE_CARDS.md) and [`DEVELOPMENT_TOOLKIT.md`](DEVELOPMENT_TOOLKIT.md). 

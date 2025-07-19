@@ -1,345 +1,496 @@
 # Testing Strategy
 
-This document outlines our comprehensive approach to testing in an AI-assisted development environment. Our testing strategy ensures code quality, reliability, and maintainability while leveraging AI capabilities for test generation and execution.
+This document defines comprehensive testing practices for AI assistants to ensure code quality, reliability, and maintainability. Follow these patterns to build robust test suites that catch issues early and support confident refactoring.
 
-**Related Documents:**
-- `FUNCTIONAL_DESIGN_STRATEGY.md` - **Foundation** - Functional requirements drive all testing
-- `coding_principles.md` - Core philosophy including "Iterate and Verify" principle
-- `ENVIRONMENT_SETUP.md` - Testing environment setup and Docker configuration
-- `LOGGING_STRATEGY.md` - **Critical integration** - Structured logging for test debugging
-- `MCP_STRATEGY.md` - AI tools for test generation and analysis
-- `PROJECT_TEMPLATES.md` - Test configuration templates and setup scripts
-- `FOUNDATION_SETUP.md` - Testing tools installation
+## Core Testing Principles
 
-**Integration Points:** This strategy integrates with our Environment Parity principle and Logging Strategy for comprehensive quality assurance. **All tests validate implementation against functional design requirements.**
+### 1. Test Pyramid Structure
+**Rule:** Follow the test pyramid to balance speed, reliability, and coverage.
 
-## Core Testing Philosophy
-
-### 1. **Functional Design Validation**
-- **Primary Purpose**: Validate that implementation meets functional design requirements *(See `FUNCTIONAL_DESIGN_STRATEGY.md`)*
-- **Acceptance Criteria**: Convert functional design acceptance criteria into test cases
-- **Business Rule Testing**: Ensure business rules from functional design are properly implemented
-- **User Story Validation**: Confirm user stories from functional design are fulfilled
-
-### 2. **AI-Assisted Test Generation**
-- Use AI to generate comprehensive test cases from functional design
-- Human review and refinement of AI-generated tests
-- AI excels at generating test scenarios from functional specifications
-- Humans focus on business logic validation and edge cases from functional design
-
-### 3. **Test-Driven Development (TDD) with Functional Design**
-- Write tests based on functional design acceptance criteria
-- Use AI to implement functionality that passes functional design tests
-- Iterative refinement of both tests and implementation
-- Maintain traceability between functional design and test cases
-
-### 3. **Environment Parity in Testing**
-- Test environments mirror production as closely as possible *(Aligns with Environment Parity principle in `coding_principles.md`)*
-- Use containerized testing environments *(Docker setup in `ENVIRONMENT_SETUP.md`)*
-- Same external dependencies and configurations
-- Consistent data and state management
-
-## Testing Pyramid Strategy
-
-### Unit Tests (Foundation)
-**Purpose:** Test individual functions and components in isolation
-**Coverage Target:** 80%+ of code paths
-**AI Role:** Generate comprehensive test cases and edge cases *(Leverages MCP servers from `MCP_STRATEGY.md`)*
-
-**Best Practices:**
-- Fast execution (< 1 second per test)
-- No external dependencies
-- Clear test naming and documentation
-- Focused on single responsibility
-
-**AI Assistance:**
-- Generate test cases from function signatures
-- Suggest edge cases and boundary conditions
-- Create mock objects and test data
-- Identify missing test scenarios
-
-### Integration Tests (Middle Layer)
-**Purpose:** Test component interactions and data flow
-**Coverage Target:** Key integration points and workflows
-**AI Role:** Generate test scenarios and data setup
-
-**Best Practices:**
-- Test real component interactions
-- Use test databases and external service mocks
-- Focus on data contracts and API boundaries
-- Validate error handling and recovery
-
-**AI Assistance:**
-- Generate test data and scenarios
-- Create API test cases from documentation
-- Suggest integration patterns to test
-- Identify potential failure points
-
-### End-to-End Tests (Top Layer)
-**Purpose:** Test complete user workflows and system behavior
-**Coverage Target:** Critical user journeys and business processes
-**AI Role:** Generate user scenarios and test scripts
-
-**Best Practices:**
-- Test from user perspective
-- Use production-like environments
-- Focus on business-critical workflows
-- Include performance and reliability validation
-
-**AI Assistance:**
-- Generate user journey test cases
-- Create test scripts and automation
-- Suggest realistic test data
-- Identify workflow variations to test
-
-## Testing Types and Approaches
-
-### Functional Testing
-**What:** Verify application behavior meets requirements
-**Tools:** Jest, Pytest, RSpec, Cypress
-**AI Role:** Generate test cases from requirements and specifications
-
-### Performance Testing
-**What:** Validate system performance under load
-**Tools:** Artillery, k6, JMeter
-**AI Role:** Generate load patterns and performance scenarios
-
-### Security Testing
-**What:** Identify vulnerabilities and security weaknesses
-**Tools:** OWASP ZAP, Snyk, Bandit
-**AI Role:** Suggest security test cases and attack vectors
-
-### Accessibility Testing
-**What:** Ensure application is accessible to all users
-**Tools:** axe-core, Lighthouse, WAVE
-**AI Role:** Generate accessibility test scenarios
-
-### Visual Regression Testing
-**What:** Detect unintended visual changes
-**Tools:** Percy, Chromatic, BackstopJS
-**AI Role:** Generate visual test cases and scenarios
-
-## Test Data Management
-
-### Test Data Strategy
-**Principle:** Realistic, consistent, and maintainable test data
-
-**Approaches:**
-- **Synthetic Data:** AI-generated realistic test data
-- **Data Fixtures:** Predefined test datasets
-- **Database Seeding:** Automated test data setup
-- **Data Factories:** Programmatic test data generation
-
-### AI-Generated Test Data
-**Benefits:**
-- Realistic and diverse datasets
-- Edge cases and boundary conditions
-- Scalable data generation
-- Privacy-compliant synthetic data
-
-**Implementation:**
-- Use AI to generate user profiles, transactions, content
-- Create data that exercises various code paths
-- Generate both valid and invalid data scenarios
-- Maintain data consistency across test runs
-
-## Testing in Different Environments
-
-### Local Development Testing
-**Environment:** Developer machine with Docker containers
-**Purpose:** Fast feedback during development
-**Configuration:**
-- Lightweight test databases
-- Mocked external services
-- Fast test execution
-- Immediate feedback loops
-
-### Continuous Integration Testing
-**Environment:** CI/CD pipeline with containerized services
-**Purpose:** Automated testing on code changes
-**Configuration:**
-- Full test suite execution
-- Production-like service dependencies
-- Parallel test execution
-- Comprehensive reporting
-
-### Staging Environment Testing
-**Environment:** Production-like infrastructure
-**Purpose:** Final validation before deployment
-**Configuration:**
-- Production data volumes (anonymized)
-- Real external service integrations
-- Performance and load testing
-- User acceptance testing
-
-## Test Automation and CI/CD Integration
-
-### Automated Test Execution
-**Triggers:**
-- Code commits and pull requests
-- Scheduled regression testing
-- Deployment pipeline stages
-- Performance monitoring alerts
-
-**Pipeline Integration:**
-```yaml
-# Example CI/CD pipeline stages
-stages:
-  - lint-and-format
-  - unit-tests
-  - integration-tests
-  - security-tests
-  - performance-tests
-  - e2e-tests
-  - deployment
+```
+    /\     E2E Tests (10%)
+   /  \    Slow, expensive, realistic
+  /____\   
+ /      \  Integration Tests (20%)
+/________\  Medium speed, test interactions
+\        /
+ \______/   Unit Tests (70%)
+  \____/    Fast, isolated, focused
 ```
 
-### Test Reporting and Observability
-**Integration with Logging Strategy:** *(See `LOGGING_STRATEGY.md` for detailed structured logging approach)*
-- Structured test result logging with correlation IDs
-- Performance metrics and trends
-- Error tracking and analysis
-- Cross-service test tracing
+**Implementation Guidelines:**
+- **Unit Tests (70%):** Test individual functions and methods in isolation
+- **Integration Tests (20%):** Test component interactions and data flow
+- **End-to-End Tests (10%):** Test complete user workflows and system behavior
 
-**Reporting Tools:**
-- Test coverage reports
-- Performance trend analysis
-- Failure rate monitoring
-- Test execution dashboards
+### 2. Test-Driven Development (TDD)
+**Rule:** Write tests before implementation to drive design and ensure coverage.
 
-## AI-Specific Testing Considerations
+```python
+# TDD Cycle: Red -> Green -> Refactor
 
-### Testing AI-Generated Code
-**Challenges:**
-- AI code may have unexpected edge cases
-- Generated code patterns may not follow conventions
-- Complex logic may need additional validation
+# 1. RED: Write failing test first
+def test_calculate_discount_with_valid_coupon():
+    """Test discount calculation with valid coupon code."""
+    result = calculate_discount(100.0, "SAVE10")
+    assert result == 90.0
 
-**Strategies:**
-- Comprehensive test coverage for AI-generated code
-- Manual review of generated tests
-- Property-based testing for complex algorithms
-- Regression testing for AI code changes
+# 2. GREEN: Write minimal code to make test pass
+def calculate_discount(amount, coupon_code):
+    if coupon_code == "SAVE10":
+        return amount * 0.9
+    return amount
 
-### Testing with AI Assistance
-**Workflow:**
-1. **Requirements Analysis:** AI suggests test scenarios
-2. **Test Generation:** AI creates initial test cases
-3. **Human Review:** Validate and refine tests
-4. **Implementation:** AI assists with test code
-5. **Execution:** Automated test running
-6. **Analysis:** AI helps interpret results
+# 3. REFACTOR: Improve code while keeping tests green
+def calculate_discount(amount, coupon_code):
+    """Calculate discounted amount based on coupon code."""
+    discounts = {"SAVE10": 0.1, "SAVE20": 0.2}
+    discount_rate = discounts.get(coupon_code, 0)
+    return amount * (1 - discount_rate)
+```
 
-### Quality Assurance
-**Human Oversight:**
-- Review AI-generated tests for completeness
-- Validate test logic and assertions
-- Ensure tests match business requirements
-- Maintain test code quality standards
+### 3. Test Categories and Coverage
+**Rule:** Test all paths including happy path, edge cases, and error conditions.
 
-## Testing Tools and Infrastructure
+```python
+class TestUserRegistration:
+    """Comprehensive test suite for user registration."""
+    
+    # Happy path tests
+    def test_register_user_with_valid_data_succeeds(self):
+        user = register_user("john@example.com", "SecurePass123!")
+        assert user.email == "john@example.com"
+        assert user.is_active is True
+    
+    # Edge case tests
+    def test_register_user_with_minimum_valid_password(self):
+        user = register_user("jane@example.com", "Pass123!")
+        assert user is not None
+    
+    def test_register_user_with_maximum_email_length(self):
+        long_email = "a" * 240 + "@example.com"  # 254 chars total
+        user = register_user(long_email, "SecurePass123!")
+        assert user.email == long_email
+    
+    # Error condition tests
+    def test_register_user_with_invalid_email_raises_error(self):
+        with pytest.raises(ValidationError, match="Invalid email format"):
+            register_user("invalid-email", "SecurePass123!")
+    
+    def test_register_user_with_existing_email_raises_error(self):
+        register_user("existing@example.com", "Pass123!")
+        with pytest.raises(BusinessLogicError, match="Email already registered"):
+            register_user("existing@example.com", "Pass456!")
+    
+    def test_register_user_with_weak_password_raises_error(self):
+        with pytest.raises(ValidationError, match="Password too weak"):
+            register_user("user@example.com", "123")
+```
 
-### Language-Specific Testing Frameworks
+## Unit Testing Patterns
 
-**JavaScript/Node.js:**
-- **Unit:** Jest, Mocha, Vitest
-- **Integration:** Supertest, Testing Library
-- **E2E:** Cypress, Playwright, Puppeteer
+### 1. Isolated Unit Tests
+**Pattern:** Test units in isolation using mocks for dependencies.
 
-**Python:**
-- **Unit:** pytest, unittest
-- **Integration:** pytest with fixtures
-- **E2E:** Selenium, Playwright
+```python
+import pytest
+from unittest.mock import Mock, patch
 
-**Ruby:**
-- **Unit:** RSpec, Minitest
-- **Integration:** Capybara
-- **E2E:** Cucumber, Selenium
+class TestEmailService:
+    def test_send_welcome_email_calls_smtp_correctly(self):
+        """Test email service uses SMTP client correctly."""
+        # Arrange
+        mock_smtp = Mock()
+        email_service = EmailService(smtp_client=mock_smtp)
+        user = User(email="test@example.com", name="Test User")
+        
+        # Act
+        result = email_service.send_welcome_email(user)
+        
+        # Assert
+        mock_smtp.send.assert_called_once_with(
+            to="test@example.com",
+            subject="Welcome to Our Service",
+            body="Hello Test User, welcome to our service!"
+        )
+        assert result is True
+    
+    @patch('email_service.smtp_client')
+    def test_send_email_handles_smtp_failure(self, mock_smtp):
+        """Test email service handles SMTP failures gracefully."""
+        # Arrange
+        mock_smtp.send.side_effect = SMTPException("Server unavailable")
+        email_service = EmailService()
+        
+        # Act & Assert
+        with pytest.raises(EmailDeliveryError):
+            email_service.send_welcome_email(User(email="test@example.com"))
+```
 
-### Testing Infrastructure
-**Containerized Testing:**
-- Docker containers for test environments
-- Docker Compose for multi-service testing
-- Kubernetes for large-scale testing
+### 2. Parameterized Tests
+**Pattern:** Test multiple scenarios efficiently with parameterized tests.
 
-**Cloud Testing:**
-- Browser testing in cloud environments
-- Scalable test execution
-- Cross-platform and cross-browser testing
+```python
+import pytest
 
-## Test Maintenance and Evolution
+class TestPasswordValidator:
+    @pytest.mark.parametrize("password,expected", [
+        ("SecurePass123!", True),      # Valid password
+        ("AnotherGood1@", True),       # Valid password
+        ("short", False),              # Too short
+        ("nouppercase123!", False),    # No uppercase
+        ("NOLOWERCASE123!", False),    # No lowercase
+        ("NoNumbers!", False),         # No numbers
+        ("NoSpecialChars123", False),  # No special characters
+    ])
+    def test_password_validation(self, password, expected):
+        """Test password validation with various inputs."""
+        result = validate_password(password)
+        assert result == expected
+    
+    @pytest.mark.parametrize("email,expected", [
+        ("user@example.com", True),
+        ("test.email+tag@domain.co.uk", True),
+        ("invalid.email", False),
+        ("@missingusername.com", False),
+        ("username@.com", False),
+        ("", False),
+        (None, False),
+    ])
+    def test_email_validation(self, email, expected):
+        """Test email validation with various formats."""
+        result = validate_email(email)
+        assert result == expected
+```
 
-### Test Code Quality
-**Principles:**
-- Tests are first-class code
-- Clear, readable test documentation
-- Regular refactoring and maintenance
-- Version control for test assets
+## Integration Testing Patterns
 
-### Test Suite Optimization
-**Strategies:**
-- Regular test suite performance analysis
-- Removal of redundant or obsolete tests
-- Parallelization of test execution
-- Smart test selection based on code changes
+### 1. Database Integration Tests
+**Pattern:** Test database operations with real database connections.
 
-### Continuous Improvement
-**Practices:**
-- Regular retrospectives on testing effectiveness
-- Metrics-driven testing improvements
-- Adoption of new testing tools and techniques
-- Knowledge sharing and best practices
+```python
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-## Success Metrics
+@pytest.fixture(scope="function")
+def db_session():
+    """Create test database session."""
+    engine = create_engine("sqlite:///:memory:")  # In-memory test database
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    
+    yield session
+    
+    session.close()
 
-### Test Coverage Metrics
-- **Code Coverage:** Percentage of code exercised by tests
-- **Branch Coverage:** Percentage of code branches tested
-- **Function Coverage:** Percentage of functions tested
-- **Line Coverage:** Percentage of lines executed
+class TestUserRepository:
+    def test_create_user_saves_to_database(self, db_session):
+        """Test user creation persists to database."""
+        # Arrange
+        repo = UserRepository(db_session)
+        user_data = {"email": "test@example.com", "name": "Test User"}
+        
+        # Act
+        user = repo.create_user(user_data)
+        
+        # Assert
+        saved_user = db_session.query(User).filter_by(email="test@example.com").first()
+        assert saved_user is not None
+        assert saved_user.email == "test@example.com"
+        assert saved_user.name == "Test User"
+    
+    def test_find_user_by_email_returns_correct_user(self, db_session):
+        """Test user lookup by email."""
+        # Arrange
+        repo = UserRepository(db_session)
+        user1 = User(email="user1@example.com", name="User One")
+        user2 = User(email="user2@example.com", name="User Two")
+        db_session.add_all([user1, user2])
+        db_session.commit()
+        
+        # Act
+        found_user = repo.find_by_email("user1@example.com")
+        
+        # Assert
+        assert found_user.email == "user1@example.com"
+        assert found_user.name == "User One"
+```
 
-### Quality Metrics
-- **Defect Detection Rate:** Percentage of bugs caught by tests
-- **Test Execution Time:** Speed of test suite execution
-- **Test Reliability:** Consistency of test results
-- **Test Maintenance Effort:** Time spent maintaining tests
+### 2. API Integration Tests
+**Pattern:** Test API endpoints with real HTTP requests.
 
-### Business Metrics
-- **Time to Market:** Impact of testing on delivery speed
-- **Production Incidents:** Reduction in production issues
-- **Customer Satisfaction:** Impact on user experience
-- **Development Velocity:** Effect on development speed
+```python
+import pytest
+import requests
+from fastapi.testclient import TestClient
 
-## Implementation Approach
+@pytest.fixture
+def api_client():
+    """Create test API client."""
+    return TestClient(app)
 
-### AI-Assisted Implementation
-**Reality:** With AI assistance, testing infrastructure setup and test generation happens in minutes, not weeks. The human role is strategic oversight and validation.
+class TestUserAPI:
+    def test_create_user_endpoint_returns_201(self, api_client):
+        """Test user creation endpoint."""
+        # Arrange
+        user_data = {
+            "email": "newuser@example.com",
+            "name": "New User",
+            "password": "SecurePass123!"
+        }
+        
+        # Act
+        response = api_client.post("/api/users", json=user_data)
+        
+        # Assert
+        assert response.status_code == 201
+        response_data = response.json()
+        assert response_data["email"] == "newuser@example.com"
+        assert "password" not in response_data  # Ensure password not returned
+    
+    def test_create_user_with_invalid_data_returns_400(self, api_client):
+        """Test user creation with invalid data."""
+        # Arrange
+        invalid_data = {"email": "invalid-email", "name": ""}
+        
+        # Act
+        response = api_client.post("/api/users", json=invalid_data)
+        
+        # Assert
+        assert response.status_code == 400
+        assert "error" in response.json()
+```
 
-### Implementation Sequence
-**Human Strategic Decisions:**
-1. **Define Testing Requirements:** Specify what needs to be tested and quality standards
-2. **Select Testing Stack:** Choose appropriate tools for the language and project type
-3. **Review and Validate:** Ensure AI-generated tests meet business requirements
-4. **Monitor and Iterate:** Continuously improve testing effectiveness
+## End-to-End Testing Patterns
 
-**AI Implementation Tasks:**
-- **Instant Setup:** Generate testing framework configuration and setup files
-- **Test Generation:** Create comprehensive test suites based on code and requirements
-- **Infrastructure Creation:** Build CI/CD pipeline configurations and Docker test environments
-- **Documentation:** Generate test documentation and usage guides
+### 1. User Workflow Tests
+**Pattern:** Test complete user journeys from start to finish.
 
-### Validation Checkpoints
-**Human Oversight Points:**
-- **Test Strategy Review:** Validate that testing approach aligns with business needs
-- **Test Coverage Analysis:** Ensure critical paths and edge cases are covered
-- **Quality Assessment:** Review test quality and maintainability
-- **Performance Validation:** Confirm tests execute efficiently and reliably
+```python
+import pytest
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-### Continuous Improvement
-**Ongoing Process:**
-- **Metrics Review:** Analyze testing effectiveness and identify improvements
-- **Tool Evolution:** Adopt new testing tools and techniques as they emerge
-- **Knowledge Sharing:** Document lessons learned and best practices
-- **Strategy Refinement:** Adjust testing approach based on project experience
+@pytest.fixture
+def browser():
+    """Set up browser for E2E tests."""
+    driver = webdriver.Chrome()
+    driver.implicitly_wait(10)
+    yield driver
+    driver.quit()
 
-This approach recognizes that AI handles the implementation details while humans provide strategic direction and quality oversight. 
+class TestUserRegistrationFlow:
+    def test_complete_user_registration_workflow(self, browser):
+        """Test complete user registration from signup to welcome."""
+        # Navigate to registration page
+        browser.get("http://localhost:3000/register")
+        
+        # Fill registration form
+        email_input = browser.find_element(By.ID, "email")
+        email_input.send_keys("testuser@example.com")
+        
+        password_input = browser.find_element(By.ID, "password")
+        password_input.send_keys("SecurePass123!")
+        
+        submit_button = browser.find_element(By.ID, "submit")
+        submit_button.click()
+        
+        # Wait for redirect to welcome page
+        WebDriverWait(browser, 10).until(
+            EC.presence_of_element_located((By.ID, "welcome-message"))
+        )
+        
+        # Verify welcome message
+        welcome_text = browser.find_element(By.ID, "welcome-message").text
+        assert "Welcome, testuser@example.com" in welcome_text
+        
+        # Verify user can access dashboard
+        dashboard_link = browser.find_element(By.ID, "dashboard-link")
+        dashboard_link.click()
+        
+        WebDriverWait(browser, 10).until(
+            EC.presence_of_element_located((By.ID, "dashboard"))
+        )
+        
+        assert "dashboard" in browser.current_url
+```
+
+## Test Configuration and Setup
+
+### 1. Test Environment Configuration
+**Setup:** Configure isolated test environments.
+
+```python
+# conftest.py - pytest configuration
+import pytest
+import os
+from unittest.mock import patch
+
+@pytest.fixture(scope="session")
+def test_config():
+    """Test-specific configuration."""
+    return {
+        "DATABASE_URL": "sqlite:///:memory:",
+        "REDIS_URL": "redis://localhost:6379/1",  # Test database
+        "EMAIL_BACKEND": "test",
+        "DEBUG": True,
+        "TESTING": True
+    }
+
+@pytest.fixture(autouse=True)
+def setup_test_environment(test_config):
+    """Automatically set up test environment for all tests."""
+    with patch.dict(os.environ, test_config):
+        yield
+
+@pytest.fixture(scope="function")
+def clean_database(db_session):
+    """Clean database before each test."""
+    # Clear all tables
+    for table in reversed(Base.metadata.sorted_tables):
+        db_session.execute(table.delete())
+    db_session.commit()
+    yield
+    # Cleanup after test
+    db_session.rollback()
+```
+
+### 2. Test Data Management
+**Pattern:** Use factories and fixtures for consistent test data.
+
+```python
+import factory
+from factory.alchemy import SQLAlchemyModelFactory
+
+class UserFactory(SQLAlchemyModelFactory):
+    """Factory for creating test users."""
+    class Meta:
+        model = User
+        sqlalchemy_session_persistence = "commit"
+    
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+    name = factory.Faker("name")
+    is_active = True
+    created_at = factory.Faker("date_time")
+
+class ProductFactory(SQLAlchemyModelFactory):
+    """Factory for creating test products."""
+    class Meta:
+        model = Product
+        sqlalchemy_session_persistence = "commit"
+    
+    name = factory.Faker("word")
+    price = factory.Faker("pydecimal", left_digits=3, right_digits=2, positive=True)
+    category = factory.Faker("word")
+
+# Usage in tests
+class TestOrderService:
+    def test_create_order_with_valid_data(self, db_session):
+        # Create test data using factories
+        user = UserFactory()
+        product1 = ProductFactory(price=10.00)
+        product2 = ProductFactory(price=20.00)
+        
+        # Test order creation
+        order = create_order(user.id, [product1.id, product2.id])
+        
+        assert order.total == 30.00
+        assert len(order.items) == 2
+```
+
+## Test Quality and Maintenance
+
+### 1. Test Coverage Requirements
+**Standard:** Maintain comprehensive test coverage across all code paths.
+
+```yaml
+# pytest.ini - Coverage configuration
+[tool:pytest]
+addopts = 
+    --cov=src
+    --cov-report=html
+    --cov-report=term-missing
+    --cov-fail-under=80
+    --strict-markers
+
+markers =
+    unit: Unit tests
+    integration: Integration tests
+    e2e: End-to-end tests
+    slow: Slow running tests
+```
+
+### 2. Performance Testing
+**Pattern:** Include performance tests for critical paths.
+
+```python
+import time
+import pytest
+
+class TestPerformance:
+    def test_user_lookup_performance(self, db_session):
+        """Test user lookup completes within acceptable time."""
+        # Setup: Create many users
+        users = UserFactory.create_batch(1000)
+        db_session.commit()
+        
+        # Test: Measure lookup time
+        start_time = time.time()
+        result = find_user_by_email("user500@example.com")
+        end_time = time.time()
+        
+        # Assert: Lookup should be fast
+        assert result is not None
+        assert (end_time - start_time) < 0.1  # Under 100ms
+    
+    @pytest.mark.slow
+    def test_bulk_import_performance(self):
+        """Test bulk operations perform within limits."""
+        data = [{"name": f"Product {i}", "price": i} for i in range(10000)]
+        
+        start_time = time.time()
+        bulk_import_products(data)
+        end_time = time.time()
+        
+        # Should process 10k items in under 5 seconds
+        assert (end_time - start_time) < 5.0
+```
+
+## AI Assistant Testing Guidelines
+
+### 1. When Writing Tests
+Always include:
+- [ ] Test for happy path with valid inputs
+- [ ] Test edge cases and boundary conditions
+- [ ] Test error conditions and exception handling
+- [ ] Use descriptive test names that explain the scenario
+- [ ] Include setup and teardown for clean test isolation
+
+### 2. Test Structure Standards
+Follow the Arrange-Act-Assert pattern:
+- [ ] **Arrange:** Set up test data and conditions
+- [ ] **Act:** Execute the function or method being tested
+- [ ] **Assert:** Verify the expected outcomes
+
+### 3. Testing Checklist
+Before considering code complete:
+- [ ] Unit tests cover all public methods
+- [ ] Integration tests verify component interactions
+- [ ] Error handling is tested with appropriate exceptions
+- [ ] Edge cases and boundary conditions are covered
+- [ ] Test coverage meets minimum requirements (80%)
+
+## Quick Reference
+
+**Test Pyramid:** 70% unit, 20% integration, 10% E2E tests
+**TDD Cycle:** Red (write failing test) → Green (make it pass) → Refactor
+**Test Categories:** Happy path, edge cases, error conditions
+**Naming:** `test_function_scenario_expected_result`
+**Structure:** Arrange → Act → Assert
+**Coverage:** Maintain >80% code coverage with meaningful tests
+
+For implementation examples, see [`QUICK_REFERENCE_CARDS.md`](QUICK_REFERENCE_CARDS.md). 

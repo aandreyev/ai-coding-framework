@@ -1,722 +1,473 @@
-# Error Handling & Resilience Strategy
+# Error Resilience Strategy
 
-This document outlines comprehensive error handling and resilience patterns for small-to-medium applications (50-100 users). The focus is on practical, simple error handling that provides good user experience while maintaining system stability.
+This document provides error handling guidance for AI assistants to build robust, fault-tolerant applications. Follow these patterns to create systems that gracefully handle failures and provide excellent user experiences.
 
-**Related Documents:**
-- `LOGGING_STRATEGY.md` - **Tightly integrated** - All errors must be logged with proper correlation
-- `SECURITY_STRATEGY.md` - Security-aware error handling without information disclosure
-- `FUNCTIONAL_DESIGN_STRATEGY.md` - Error scenarios must be identified during functional design
-- `TECHNICAL_DESIGN_STRATEGY.md` - Error handling architecture decisions
-- `TESTING_STRATEGY.md` - Error scenarios must be tested comprehensively
-- `MONITORING_STRATEGY.md` - Error monitoring and alerting integration
-- `coding_principles.md` - Error handling as part of core development principles
+## Core Error Handling Principles
 
-**Core Principle:** Errors are inevitable - plan for them, handle them gracefully, log them comprehensively, and learn from them. Simple, consistent error handling is better than complex, inconsistent approaches.
+### 1. Fail Fast, Fail Safe
+**Rule:** Detect errors early and handle them gracefully without exposing system internals.
 
-## Error Handling Philosophy
-
-### 1. **Fail Fast, Recover Gracefully**
-- **Principle**: Detect errors early, handle them appropriately, and provide meaningful feedback
-- **Implementation**: Validate inputs early, use defensive programming, implement proper fallbacks
-- **User Experience**: Users should never see technical error details but should understand what went wrong
-- **System Stability**: Errors in one component shouldn't cascade to bring down the entire system
-
-### 2. **Comprehensive Error Logging**
-- **Principle**: Every error must be logged with sufficient context for debugging
-- **Integration**: Tight integration with `LOGGING_STRATEGY.md` for structured error logging
-- **Correlation**: Use correlation IDs to trace errors across system components
-- **Security**: Log errors without exposing sensitive information to users
-
-### 3. **Predictable Error Responses**
-- **Principle**: Consistent error response format across all application layers
-- **Implementation**: Standardized error objects, HTTP status codes, and user messages
-- **Documentation**: Clear error codes and messages for API consumers
-- **Monitoring**: Structured error data for monitoring and alerting
-
-## Error Categories and Handling Strategies
-
-### Error Handling Flow
-
-```mermaid
-graph TD
-    A["Error Occurs"] --> B{"Error Type?"}
-    B -->|User Input| C["Validate & Return<br/>User-Friendly Message"]
-    B -->|System Integration| D["Retry with<br/>Exponential Backoff"]
-    B -->|Business Logic| E["Log & Return<br/>Business Error"]
-    B -->|System Error| F["Log & Return<br/>Generic Message"]
+```python
+# DO: Validate inputs early and fail fast
+def process_payment(amount, payment_method):
+    """Process payment with comprehensive validation."""
+    # Validate inputs immediately
+    if not isinstance(amount, (int, float)) or amount <= 0:
+        raise ValueError("Amount must be a positive number")
     
-    D --> G{"Retry Successful?"}
-    G -->|Yes| H["Continue Processing"]
-    G -->|No| I["Circuit Breaker<br/>or Fallback"]
+    if payment_method not in ['credit_card', 'paypal', 'bank_transfer']:
+        raise ValueError("Invalid payment method")
     
-    C --> J["Log Error with<br/>Correlation ID"]
-    E --> J
-    F --> J
-    I --> J
-    
-    J --> K["Update Metrics"]
-    K --> L["Send Alerts<br/>(if needed)"]
-    
-    style A fill:#ffcdd2
-    style H fill:#c8e6c9
-    style J fill:#fff3e0
+    try:
+        result = payment_gateway.charge(amount, payment_method)
+        return {"success": True, "transaction_id": result.id}
+    except PaymentGatewayError as e:
+        logger.error(f"Payment failed: {e}", extra={"amount": amount, "method": payment_method})
+        raise PaymentProcessingError("Payment could not be processed. Please try again.")
+    except NetworkError as e:
+        logger.error(f"Network error during payment: {e}")
+        raise ServiceUnavailableError("Payment service temporarily unavailable")
+
+# DON'T: Let errors propagate with system details
+def process_payment(amount, payment_method):
+    result = payment_gateway.charge(amount, payment_method)  # No validation
+    return result  # Exposes internal errors
 ```
 
-### Resilience Patterns
+### 2. Comprehensive Error Classification
+**Rule:** Categorize errors to enable appropriate handling strategies.
 
-```mermaid
-graph LR
-    A["Request"] --> B["Circuit Breaker"]
-    B -->|Open| C["Fallback Response"]
-    B -->|Closed| D["Retry Logic"]
-    D -->|Success| E["Response"]
-    D -->|Failure| F["Exponential Backoff"]
-    F --> G["Graceful Degradation"]
-    
-    style A fill:#e1f5fe
-    style E fill:#c8e6c9
-    style C fill:#fff3e0
-    style G fill:#fff3e0
+```python
+# Error hierarchy for clear handling
+class ApplicationError(Exception):
+    """Base application error."""
+    pass
+
+class ValidationError(ApplicationError):
+    """Input validation failed."""
+    pass
+
+class BusinessLogicError(ApplicationError):
+    """Business rule violation."""
+    pass
+
+class ExternalServiceError(ApplicationError):
+    """External service failure."""
+    pass
+
+class DatabaseError(ApplicationError):
+    """Database operation failed."""
+    pass
+
+# Usage with specific handling
+def create_user_account(email, password):
+    try:
+        if not validate_email(email):
+            raise ValidationError("Invalid email format")
+        
+        if User.objects.filter(email=email).exists():
+            raise BusinessLogicError("Account already exists")
+        
+        user = User.objects.create(email=email, password=hash_password(password))
+        return user
+        
+    except ValidationError as e:
+        return {"error": str(e), "code": "VALIDATION_ERROR"}
+    except BusinessLogicError as e:
+        return {"error": str(e), "code": "BUSINESS_ERROR"}
+    except DatabaseError as e:
+        logger.error(f"Database error creating user: {e}")
+        return {"error": "Account creation failed", "code": "SERVICE_ERROR"}
 ```
 
-### 1. **User Input Errors**
-
-**Characteristics:**
-- Invalid data format, missing required fields, business rule violations
-- Predictable and preventable through validation
-- User can typically correct the error
-
-**Handling Strategy:**
-```javascript
-// Input Validation Error Handling
-const validateUserInput = (data) => {
-  const errors = [];
-  
-  // Validate required fields
-  if (!data.email) {
-    errors.push({
-      field: 'email',
-      code: 'REQUIRED',
-      message: 'Email address is required'
-    });
-  }
-  
-  // Validate format
-  if (data.email && !isValidEmail(data.email)) {
-    errors.push({
-      field: 'email',
-      code: 'INVALID_FORMAT',
-      message: 'Please enter a valid email address'
-    });
-  }
-  
-  return errors;
-};
-
-// API Error Response
-const handleValidationError = (req, res, errors) => {
-  // Log validation error with correlation ID
-  logger.warn('Input validation failed', {
-    correlationId: req.correlationId,
-    userId: req.user?.id,
-    endpoint: req.path,
-    errors: errors,
-    userAgent: req.headers['user-agent']
-  });
-  
-  // Return user-friendly error response
-  res.status(400).json({
-    error: 'VALIDATION_ERROR',
-    message: 'Please correct the following errors',
-    details: errors,
-    correlationId: req.correlationId
-  });
-};
-```
-
-**AI Implementation Guidelines:**
-- Always validate input at the application boundary
-- Provide specific, actionable error messages
-- Log validation errors with full context
-- Use consistent error response format
-- Don't expose internal validation logic to users
-
-### 2. **System Integration Errors**
-
-**Characteristics:**
-- Database connection failures, external API failures, network timeouts
-- Often transient and may succeed on retry
-- System-level issues that users can't directly fix
-
-**Handling Strategy:**
-```javascript
-// Database Connection Error Handling
-const executeWithRetry = async (operation, maxRetries = 3, delay = 1000) => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      // Log each retry attempt
-      logger.warn('Operation failed, retrying', {
-        correlationId: req.correlationId,
-        attempt: attempt,
-        maxRetries: maxRetries,
-        error: error.message,
-        errorCode: error.code
-      });
-      
-      // Don't retry on certain error types
-      if (isNonRetryableError(error)) {
-        throw error;
-      }
-      
-      // Wait before retry (exponential backoff)
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, delay * attempt));
-      } else {
-        throw error;
-      }
-    }
-  }
-};
-
-// External API Error Handling
-const callExternalAPI = async (url, data) => {
-  try {
-    const response = await axios.post(url, data, {
-      timeout: 5000,
-      retry: 3
-    });
-    return response.data;
-  } catch (error) {
-    // Log external API error
-    logger.error('External API call failed', {
-      correlationId: req.correlationId,
-      url: url,
-      statusCode: error.response?.status,
-      errorMessage: error.message,
-      responseData: error.response?.data
-    });
-    
-    // Provide fallback or graceful degradation
-    if (error.response?.status === 503) {
-      // Service unavailable - use cached data or fallback
-      return await getFallbackData();
-    }
-    
-    throw new SystemError('External service unavailable', 'EXTERNAL_API_ERROR');
-  }
-};
-```
-
-**AI Implementation Guidelines:**
-- Implement retry logic with exponential backoff
-- Use circuit breaker pattern for external dependencies
-- Provide fallback mechanisms where possible
-- Log all integration errors with full context
-- Implement timeout handling for all external calls
-
-### 3. **Business Logic Errors**
-
-**Characteristics:**
-- Violations of business rules, state conflicts, authorization failures
-- Application-specific errors that require business context
-- May require user action or administrative intervention
-
-**Handling Strategy:**
-```javascript
-// Business Rule Validation
-class BusinessRuleError extends Error {
-  constructor(message, code, details = {}) {
-    super(message);
-    this.name = 'BusinessRuleError';
-    this.code = code;
-    this.details = details;
-  }
-}
-
-// Example: Order Processing
-const processOrder = async (orderData, user) => {
-  try {
-    // Check business rules
-    if (orderData.amount > user.creditLimit) {
-      throw new BusinessRuleError(
-        'Order amount exceeds credit limit',
-        'CREDIT_LIMIT_EXCEEDED',
-        { 
-          orderAmount: orderData.amount,
-          creditLimit: user.creditLimit,
-          userId: user.id
-        }
-      );
-    }
-    
-    // Process order...
-    return await createOrder(orderData);
-    
-  } catch (error) {
-    if (error instanceof BusinessRuleError) {
-      // Log business rule violation
-      logger.warn('Business rule violation', {
-        correlationId: req.correlationId,
-        userId: user.id,
-        ruleCode: error.code,
-        ruleMessage: error.message,
-        ruleDetails: error.details
-      });
-      
-      // Return business-friendly error
-      return {
-        success: false,
-        error: error.code,
-        message: error.message,
-        canRetry: false
-      };
-    }
-    
-    // Re-throw system errors
-    throw error;
-  }
-};
-```
-
-**AI Implementation Guidelines:**
-- Create specific error classes for business rule violations
-- Provide clear, business-friendly error messages
-- Log business rule violations with business context
-- Indicate whether the error is retryable
-- Don't expose internal business logic in error messages
-
-### 4. **System Errors**
-
-**Characteristics:**
-- Unexpected errors, programming bugs, resource exhaustion
-- Usually indicate system problems that require investigation
-- Users can't fix these errors directly
-
-**Handling Strategy:**
-```javascript
-// Global Error Handler
-const globalErrorHandler = (error, req, res, next) => {
-  // Generate correlation ID if not present
-  const correlationId = req.correlationId || generateCorrelationId();
-  
-  // Log all system errors
-  logger.error('Unhandled system error', {
-    correlationId: correlationId,
-    userId: req.user?.id,
-    endpoint: req.path,
-    method: req.method,
-    userAgent: req.headers['user-agent'],
-    error: {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    }
-  });
-  
-  // Return generic error response
-  res.status(500).json({
-    error: 'SYSTEM_ERROR',
-    message: 'An unexpected error occurred. Please try again later.',
-    correlationId: correlationId,
-    // Only include details in development
-    details: process.env.NODE_ENV === 'development' ? error.message : undefined
-  });
-};
-
-// Graceful Shutdown Handler
-const gracefulShutdown = () => {
-  logger.info('Graceful shutdown initiated');
-  
-  // Close database connections
-  database.close();
-  
-  // Close HTTP server
-  server.close(() => {
-    logger.info('HTTP server closed');
-    process.exit(0);
-  });
-  
-  // Force shutdown after timeout
-  setTimeout(() => {
-    logger.error('Forced shutdown after timeout');
-    process.exit(1);
-  }, 10000);
-};
-
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
-```
-
-**AI Implementation Guidelines:**
-- Implement global error handlers for unhandled errors
-- Log all system errors with full context and stack traces
-- Provide generic error messages to users
-- Implement graceful shutdown procedures
-- Use process monitoring and automatic restart capabilities
-
-## Error Response Standards
-
-### 1. **Consistent Error Response Format**
+### 3. User-Friendly Error Messages
+**Rule:** Provide helpful error messages that guide users toward resolution.
 
 ```javascript
-// Standard Error Response Structure
-const ErrorResponse = {
-  error: 'ERROR_CODE',           // Machine-readable error code
-  message: 'User-friendly message', // Human-readable message
-  correlationId: 'uuid',         // For tracking and support
-  timestamp: '2024-01-01T00:00:00Z', // When error occurred
-  details: {                     // Optional additional context
-    field: 'email',
-    code: 'INVALID_FORMAT'
+// DO: Provide actionable error messages
+const ErrorMessages = {
+  VALIDATION_EMAIL: {
+    message: "Please enter a valid email address",
+    action: "Check your email format (example@domain.com)"
   },
-  canRetry: false,              // Whether user should retry
-  supportContact: 'support@example.com' // How to get help
+  VALIDATION_PASSWORD: {
+    message: "Password must be at least 8 characters with one number",
+    action: "Create a stronger password"
+  },
+  NETWORK_TIMEOUT: {
+    message: "Request timed out",
+    action: "Please check your internet connection and try again"
+  },
+  SERVER_ERROR: {
+    message: "Something went wrong on our end",
+    action: "Please try again in a few minutes"
+  }
 };
 
-// HTTP Status Code Mapping
-const ERROR_STATUS_CODES = {
-  // Client Errors (4xx)
-  'VALIDATION_ERROR': 400,
-  'AUTHENTICATION_REQUIRED': 401,
-  'AUTHORIZATION_FAILED': 403,
-  'RESOURCE_NOT_FOUND': 404,
-  'BUSINESS_RULE_VIOLATION': 422,
-  'RATE_LIMIT_EXCEEDED': 429,
+function handleApiError(error) {
+  const errorInfo = ErrorMessages[error.code] || ErrorMessages.SERVER_ERROR;
   
-  // Server Errors (5xx)
-  'SYSTEM_ERROR': 500,
-  'DATABASE_ERROR': 503,
-  'EXTERNAL_API_ERROR': 503,
-  'TIMEOUT_ERROR': 504
-};
-```
+  return {
+    message: errorInfo.message,
+    action: errorInfo.action,
+    code: error.code,
+    timestamp: new Date().toISOString()
+  };
+}
 
-### 2. **Error Code Taxonomy**
-
-```javascript
-// Error Code Structure: CATEGORY_SPECIFIC_REASON
-const ERROR_CODES = {
-  // Input Validation Errors
-  'VALIDATION_REQUIRED': 'Field is required',
-  'VALIDATION_FORMAT': 'Invalid format',
-  'VALIDATION_LENGTH': 'Invalid length',
-  'VALIDATION_RANGE': 'Value out of range',
-  
-  // Authentication Errors
-  'AUTH_INVALID_CREDENTIALS': 'Invalid username or password',
-  'AUTH_ACCOUNT_LOCKED': 'Account temporarily locked',
-  'AUTH_SESSION_EXPIRED': 'Session has expired',
-  'AUTH_TOKEN_INVALID': 'Invalid authentication token',
-  
-  // Authorization Errors
-  'AUTHZ_INSUFFICIENT_PERMISSIONS': 'Insufficient permissions',
-  'AUTHZ_RESOURCE_ACCESS_DENIED': 'Access to resource denied',
-  'AUTHZ_OPERATION_NOT_ALLOWED': 'Operation not allowed',
-  
-  // Business Rule Errors
-  'BUSINESS_CREDIT_LIMIT_EXCEEDED': 'Credit limit exceeded',
-  'BUSINESS_INVENTORY_INSUFFICIENT': 'Insufficient inventory',
-  'BUSINESS_DUPLICATE_ENTRY': 'Duplicate entry not allowed',
-  
-  // System Errors
-  'SYSTEM_DATABASE_UNAVAILABLE': 'Database temporarily unavailable',
-  'SYSTEM_EXTERNAL_API_UNAVAILABLE': 'External service unavailable',
-  'SYSTEM_TIMEOUT': 'Request timeout',
-  'SYSTEM_INTERNAL_ERROR': 'Internal system error'
-};
-```
-
-## Resilience Patterns
-
-### 1. **Circuit Breaker Pattern**
-
-```javascript
-// Simple Circuit Breaker Implementation
-class CircuitBreaker {
-  constructor(threshold = 5, timeout = 60000) {
-    this.threshold = threshold;
-    this.timeout = timeout;
-    this.failureCount = 0;
-    this.lastFailureTime = null;
-    this.state = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
-  }
-  
-  async call(operation, fallback = null) {
-    if (this.state === 'OPEN') {
-      if (Date.now() - this.lastFailureTime > this.timeout) {
-        this.state = 'HALF_OPEN';
-      } else {
-        logger.warn('Circuit breaker is OPEN, using fallback', {
-          correlationId: req.correlationId,
-          failureCount: this.failureCount,
-          lastFailureTime: this.lastFailureTime
-        });
-        return fallback ? await fallback() : null;
-      }
-    }
-    
-    try {
-      const result = await operation();
-      this.onSuccess();
-      return result;
-    } catch (error) {
-      this.onFailure();
-      throw error;
-    }
-  }
-  
-  onSuccess() {
-    this.failureCount = 0;
-    this.state = 'CLOSED';
-  }
-  
-  onFailure() {
-    this.failureCount++;
-    this.lastFailureTime = Date.now();
-    
-    if (this.failureCount >= this.threshold) {
-      this.state = 'OPEN';
-      logger.error('Circuit breaker opened', {
-        correlationId: req.correlationId,
-        failureCount: this.failureCount,
-        threshold: this.threshold
-      });
-    }
-  }
+// DON'T: Expose technical details
+function handleApiError(error) {
+  return {
+    message: error.stack,  // Never expose stack traces
+    details: error.sqlQuery  // Never expose internal details
+  };
 }
 ```
 
-### 2. **Retry with Exponential Backoff**
+## Error Handling Patterns
 
-```javascript
-// Retry Strategy with Exponential Backoff
-const retryWithBackoff = async (
-  operation,
-  maxRetries = 3,
-  baseDelay = 1000,
-  maxDelay = 30000
-) => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      if (attempt === maxRetries || !isRetryableError(error)) {
-        throw error;
-      }
-      
-      // Calculate delay with exponential backoff and jitter
-      const delay = Math.min(
-        baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000,
-        maxDelay
-      );
-      
-      logger.warn('Operation failed, retrying with backoff', {
-        correlationId: req.correlationId,
-        attempt: attempt,
-        maxRetries: maxRetries,
-        delay: delay,
-        error: error.message
-      });
-      
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-};
+### 1. Retry with Exponential Backoff
+**Pattern:** Automatically retry failed operations with increasing delays.
 
-// Determine if error is retryable
-const isRetryableError = (error) => {
-  // Don't retry client errors (4xx) except for specific cases
-  if (error.response?.status >= 400 && error.response?.status < 500) {
-    return ['408', '429'].includes(error.response.status.toString());
-  }
-  
-  // Retry server errors (5xx) and network errors
-  return error.response?.status >= 500 || error.code === 'ECONNRESET';
-};
+```python
+import time
+import random
+from functools import wraps
+
+def retry_with_backoff(max_retries=3, base_delay=1, max_delay=60):
+    """Decorator for retrying functions with exponential backoff."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except (ConnectionError, TimeoutError) as e:
+                    if attempt == max_retries:
+                        raise e
+                    
+                    # Calculate delay with jitter
+                    delay = min(base_delay * (2 ** attempt), max_delay)
+                    jitter = random.uniform(0, 0.1) * delay
+                    sleep_time = delay + jitter
+                    
+                    logger.warning(f"Attempt {attempt + 1} failed, retrying in {sleep_time:.2f}s: {e}")
+                    time.sleep(sleep_time)
+            
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# Usage
+@retry_with_backoff(max_retries=3, base_delay=1)
+def call_external_api(endpoint, data):
+    """Call external API with automatic retry."""
+    response = requests.post(endpoint, json=data, timeout=30)
+    response.raise_for_status()
+    return response.json()
 ```
 
-### 3. **Graceful Degradation**
+### 2. Circuit Breaker Pattern
+**Pattern:** Temporarily disable failing services to prevent cascade failures.
 
-```javascript
-// Graceful Degradation Strategy
-const getUserRecommendations = async (userId) => {
-  try {
-    // Try primary recommendation service
-    return await recommendationService.getRecommendations(userId);
-  } catch (error) {
-    logger.warn('Primary recommendation service failed, using fallback', {
-      correlationId: req.correlationId,
-      userId: userId,
-      error: error.message
-    });
+```python
+import time
+from enum import Enum
+
+class CircuitState(Enum):
+    CLOSED = "closed"      # Normal operation
+    OPEN = "open"          # Service failing, reject requests
+    HALF_OPEN = "half_open"  # Testing if service recovered
+
+class CircuitBreaker:
+    def __init__(self, failure_threshold=5, recovery_timeout=60):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = CircuitState.CLOSED
     
-    try {
-      // Fallback to cached recommendations
-      return await getCachedRecommendations(userId);
-    } catch (cacheError) {
-      logger.warn('Cached recommendations failed, using default', {
-        correlationId: req.correlationId,
-        userId: userId,
-        error: cacheError.message
-      });
-      
-      // Final fallback to default recommendations
-      return getDefaultRecommendations();
-    }
-  }
-};
+    def call(self, func, *args, **kwargs):
+        if self.state == CircuitState.OPEN:
+            if time.time() - self.last_failure_time > self.recovery_timeout:
+                self.state = CircuitState.HALF_OPEN
+            else:
+                raise ServiceUnavailableError("Service temporarily unavailable")
+        
+        try:
+            result = func(*args, **kwargs)
+            self.on_success()
+            return result
+        except Exception as e:
+            self.on_failure()
+            raise e
+    
+    def on_success(self):
+        self.failure_count = 0
+        self.state = CircuitState.CLOSED
+    
+    def on_failure(self):
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+        
+        if self.failure_count >= self.failure_threshold:
+            self.state = CircuitState.OPEN
+
+# Usage
+payment_circuit = CircuitBreaker(failure_threshold=3, recovery_timeout=30)
+
+def process_payment_safely(amount, method):
+    try:
+        return payment_circuit.call(payment_gateway.charge, amount, method)
+    except ServiceUnavailableError:
+        return {"error": "Payment service temporarily unavailable", "retry_after": 30}
+```
+
+### 3. Graceful Degradation
+**Pattern:** Provide reduced functionality when systems fail rather than complete failure.
+
+```python
+def get_user_recommendations(user_id):
+    """Get user recommendations with fallback strategies."""
+    try:
+        # Try personalized recommendations
+        return ml_service.get_personalized_recommendations(user_id)
+    except MLServiceError:
+        logger.warning(f"ML service failed for user {user_id}, using popular items")
+        try:
+            # Fallback to popular items
+            return cache.get_popular_items()
+        except CacheError:
+            logger.warning("Cache failed, using default recommendations")
+            # Final fallback to static recommendations
+            return get_default_recommendations()
+
+def get_default_recommendations():
+    """Static fallback recommendations."""
+    return [
+        {"id": 1, "title": "Featured Product 1", "type": "featured"},
+        {"id": 2, "title": "Featured Product 2", "type": "featured"},
+        {"id": 3, "title": "Popular Product", "type": "popular"}
+    ]
 ```
 
 ## Error Monitoring and Alerting
 
-### 1. **Error Metrics and Monitoring**
+### 1. Structured Error Logging
+**Pattern:** Log errors with context for effective debugging.
 
-```javascript
-// Error Metrics Collection
-const errorMetrics = {
-  // Track error rates by type
-  incrementErrorCount: (errorType, endpoint) => {
-    metrics.increment('errors.total', {
-      type: errorType,
-      endpoint: endpoint
-    });
-  },
-  
-  // Track error response times
-  recordErrorResponseTime: (duration, errorType) => {
-    metrics.histogram('errors.response_time', duration, {
-      type: errorType
-    });
-  },
-  
-  // Track error recovery success
-  recordRecoveryAttempt: (success, strategy) => {
-    metrics.increment('errors.recovery_attempts', {
-      success: success,
-      strategy: strategy
-    });
-  }
-};
+```python
+import logging
+import json
+from datetime import datetime
 
-// Error Rate Monitoring
-const monitorErrorRates = () => {
-  setInterval(() => {
-    const errorRate = calculateErrorRate();
-    
-    if (errorRate > ERROR_RATE_THRESHOLD) {
-      logger.error('High error rate detected', {
-        errorRate: errorRate,
-        threshold: ERROR_RATE_THRESHOLD,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Send alert to monitoring system
-      alertingService.sendAlert({
-        type: 'HIGH_ERROR_RATE',
-        severity: 'WARNING',
-        message: `Error rate ${errorRate}% exceeds threshold ${ERROR_RATE_THRESHOLD}%`,
-        metadata: { errorRate, threshold: ERROR_RATE_THRESHOLD }
-      });
+def setup_error_logging():
+    """Configure structured error logging."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(message)s',
+        handlers=[logging.StreamHandler()]
+    )
+
+def log_error(error, context=None):
+    """Log error with structured context."""
+    error_data = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "error_type": type(error).__name__,
+        "error_message": str(error),
+        "context": context or {},
+        "severity": "error"
     }
-  }, 60000); // Check every minute
-};
+    
+    logging.error(json.dumps(error_data))
+
+# Usage in error handling
+def process_order(order_data):
+    try:
+        # Process order logic
+        return create_order(order_data)
+    except ValidationError as e:
+        log_error(e, {
+            "order_id": order_data.get("id"),
+            "user_id": order_data.get("user_id"),
+            "operation": "order_creation"
+        })
+        raise e
 ```
 
-### 2. **Alert Configuration**
+### 2. Error Rate Monitoring
+**Pattern:** Track error rates and patterns for proactive issue detection.
 
-```javascript
-// Alert Rules Configuration
-const ALERT_RULES = {
-  // High error rate
-  HIGH_ERROR_RATE: {
-    condition: 'error_rate > 5%',
-    duration: '5m',
-    severity: 'WARNING',
-    channels: ['email', 'slack']
-  },
-  
-  // Critical system errors
-  CRITICAL_SYSTEM_ERROR: {
-    condition: 'system_errors > 0',
-    duration: '1m',
-    severity: 'CRITICAL',
-    channels: ['email', 'slack', 'pagerduty']
-  },
-  
-  // Database connection failures
-  DATABASE_CONNECTION_FAILURE: {
-    condition: 'database_errors > 3',
-    duration: '2m',
-    severity: 'CRITICAL',
-    channels: ['email', 'slack']
-  },
-  
-  // External API failures
-  EXTERNAL_API_FAILURE: {
-    condition: 'external_api_errors > 10',
-    duration: '5m',
-    severity: 'WARNING',
-    channels: ['email']
+```python
+class ErrorMetrics:
+    def __init__(self):
+        self.error_counts = {}
+        self.total_requests = 0
+    
+    def record_error(self, error_type, endpoint=None):
+        """Record error occurrence."""
+        key = f"{error_type}:{endpoint}" if endpoint else error_type
+        self.error_counts[key] = self.error_counts.get(key, 0) + 1
+    
+    def record_request(self):
+        """Record total request count."""
+        self.total_requests += 1
+    
+    def get_error_rate(self, error_type=None):
+        """Calculate error rate."""
+        if error_type:
+            error_count = sum(count for key, count in self.error_counts.items() 
+                            if key.startswith(error_type))
+        else:
+            error_count = sum(self.error_counts.values())
+        
+        return error_count / max(self.total_requests, 1)
+
+# Usage
+metrics = ErrorMetrics()
+
+def api_endpoint_wrapper(func):
+    """Decorator to track API metrics."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        metrics.record_request()
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            metrics.record_error(type(e).__name__, func.__name__)
+            raise e
+    return wrapper
+```
+
+## Testing Error Scenarios
+
+### 1. Error Injection Testing
+**Pattern:** Systematically test error handling by injecting failures.
+
+```python
+import pytest
+from unittest.mock import patch, Mock
+
+class TestErrorHandling:
+    def test_payment_network_error(self):
+        """Test payment handling when network fails."""
+        with patch('payment_gateway.charge') as mock_charge:
+            mock_charge.side_effect = NetworkError("Connection timeout")
+            
+            result = process_payment(100.0, 'credit_card')
+            
+            assert result["error"] == "Payment service temporarily unavailable"
+            assert "transaction_id" not in result
+    
+    def test_database_error_fallback(self):
+        """Test fallback when database is unavailable."""
+        with patch('User.objects.create') as mock_create:
+            mock_create.side_effect = DatabaseError("Connection lost")
+            
+            result = create_user_account("test@example.com", "password123")
+            
+            assert result["code"] == "SERVICE_ERROR"
+            assert "Account creation failed" in result["error"]
+    
+    def test_circuit_breaker_opens(self):
+        """Test circuit breaker opens after repeated failures."""
+        circuit = CircuitBreaker(failure_threshold=2)
+        
+        # Cause failures to open circuit
+        for _ in range(2):
+            with pytest.raises(Exception):
+                circuit.call(lambda: 1/0)  # Division by zero
+        
+        # Circuit should now be open
+        with pytest.raises(ServiceUnavailableError):
+            circuit.call(lambda: "success")
+```
+
+## Error Response Standards
+
+### 1. API Error Response Format
+**Standard:** Consistent error response structure across all APIs.
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input data",
+    "details": {
+      "field": "email",
+      "reason": "Invalid email format"
+    },
+    "timestamp": "2024-01-15T10:30:00Z",
+    "request_id": "req_123456789"
   }
-};
+}
 ```
 
-## Error Handling Best Practices for AI Implementation
+### 2. HTTP Status Code Guidelines
+**Standards:** Use appropriate HTTP status codes for different error types.
 
-### 1. **Comprehensive Error Handling**
+```python
+ERROR_STATUS_CODES = {
+    ValidationError: 400,           # Bad Request
+    AuthenticationError: 401,       # Unauthorized
+    PermissionError: 403,          # Forbidden
+    NotFoundError: 404,            # Not Found
+    BusinessLogicError: 422,       # Unprocessable Entity
+    RateLimitError: 429,           # Too Many Requests
+    ExternalServiceError: 502,     # Bad Gateway
+    ServiceUnavailableError: 503,  # Service Unavailable
+    TimeoutError: 504,             # Gateway Timeout
+    Exception: 500                 # Internal Server Error
+}
 
-**AI Must Implement:**
-- Try-catch blocks around all async operations
-- Proper error propagation through application layers
-- Specific error handling for different error types
-- Consistent error response formatting
-- Comprehensive error logging with correlation IDs
+def handle_api_error(error):
+    """Convert error to appropriate HTTP response."""
+    status_code = ERROR_STATUS_CODES.get(type(error), 500)
+    
+    response = {
+        "error": {
+            "code": type(error).__name__.upper(),
+            "message": str(error),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    }
+    
+    return response, status_code
+```
 
-### 2. **Error Recovery Strategies**
+## AI Assistant Error Handling Guidelines
 
-**AI Must Consider:**
-- Retry logic for transient failures
-- Circuit breaker patterns for external dependencies
-- Fallback mechanisms for degraded functionality
-- Graceful degradation when services are unavailable
-- User-friendly error messages and recovery suggestions
+### 1. When Implementing Error Handling
+Always include:
+- [ ] Input validation with clear error messages
+- [ ] Appropriate exception types for different failure modes
+- [ ] Logging with sufficient context for debugging
+- [ ] User-friendly error responses
+- [ ] Graceful degradation where possible
 
-### 3. **Error Documentation**
+### 2. When Testing Error Scenarios
+Ensure coverage of:
+- [ ] Invalid input handling
+- [ ] Network failure scenarios
+- [ ] Database connectivity issues
+- [ ] External service failures
+- [ ] Rate limiting and timeout handling
 
-**AI Must Document:**
-- All possible error scenarios and their handling
-- Error codes and their meanings
-- Recovery procedures and fallback strategies
-- Monitoring and alerting configurations
-- Error response formats and examples
+### 3. When Designing APIs
+Consider:
+- [ ] Consistent error response format
+- [ ] Appropriate HTTP status codes
+- [ ] Rate limiting and quota management
+- [ ] Circuit breaker patterns for external dependencies
+- [ ] Comprehensive error documentation
 
-## Error Handling Implementation Checklist
+## Quick Reference
 
-### Pre-Implementation Error Planning
-- [ ] Error scenarios identified during functional design
-- [ ] Error handling architecture defined during technical design
-- [ ] Error response formats standardized
-- [ ] Error logging strategy integrated with logging framework
-- [ ] Error monitoring and alerting strategy defined
+**Validate Early:** Check inputs immediately and fail fast with clear messages
+**Categorize Errors:** Use specific exception types for different failure modes
+**Retry Smart:** Implement exponential backoff for transient failures
+**Degrade Gracefully:** Provide reduced functionality rather than complete failure
+**Monitor Everything:** Track error rates and patterns for proactive response
+**Test Failures:** Systematically test error scenarios and edge cases
 
-### Implementation Error Handling
-- [ ] Input validation with proper error responses
-- [ ] Business rule validation with appropriate error codes
-- [ ] System error handling with global error handlers
-- [ ] Retry logic implemented for transient failures
-- [ ] Circuit breaker patterns implemented for external dependencies
-- [ ] Graceful degradation strategies implemented
-- [ ] Error logging with correlation IDs and structured data
-- [ ] Error monitoring and metrics collection implemented
-
-### Post-Implementation Error Validation
-- [ ] Error handling tested for all identified scenarios
-- [ ] Error responses validated for consistency and security
-- [ ] Error logging validated for completeness and correlation
-- [ ] Error monitoring and alerting tested
-- [ ] Error recovery procedures documented and tested
-- [ ] Error handling documentation complete and accurate
-
-**AI Responsibility**: Ensure comprehensive error handling is implemented for all identified error scenarios before considering implementation complete. 
+For implementation examples, see [`QUICK_REFERENCE_CARDS.md`](QUICK_REFERENCE_CARDS.md). 

@@ -1,515 +1,279 @@
 # Security Strategy
 
-This document outlines practical security principles and implementation strategies for small-to-medium applications (50-100 users). The focus is on adopting good security practices without over-engineering solutions.
+This document provides security guidance for AI assistants working on development tasks. Follow these practices to build secure applications.
 
-**Related Documents:**
-- `coding_principles.md` - Core development principles that include security considerations
-- `FUNCTIONAL_DESIGN_STRATEGY.md` - Security requirements must be identified during functional design
-- `TECHNICAL_DESIGN_STRATEGY.md` - Security architecture decisions made during technical design
-- `ENVIRONMENT_SETUP.md` - Secure environment configuration and secrets management
-- `ERROR_RESILIENCE_STRATEGY.md` - Security-aware error handling and incident response
-- `LOGGING_STRATEGY.md` - Security event logging and audit trails
-- `DEPLOYMENT_STRATEGY.md` - Secure deployment practices and infrastructure
-- `DATA_MIGRATION_STRATEGY.md` - Secure data handling during migrations
+## Core Security Principles
 
-**Core Principle:** Security should be simple, practical, and built-in from the start. Over-engineering security creates complexity without proportional benefit for small applications.
+### 1. Input Validation
+**Rule:** Validate all inputs at system boundaries before processing.
 
-## Security Philosophy
-
-### 1. **Security by Design**
-- **Principle**: Security considerations are integrated into functional and technical design phases
-- **Implementation**: Every feature considers security implications before implementation
-- **AI Role**: AI must identify security requirements during design and implement secure patterns
-- **Human Role**: Validate security decisions and ensure business context is considered
-
-### 2. **Proportional Security**
-- **Principle**: Security measures should match the risk profile and scale of the application
-- **Implementation**: Choose security solutions appropriate for 50-100 user applications
-- **Avoid**: Enterprise-grade security solutions that add complexity without benefit
-- **Focus**: Common vulnerabilities and practical protection measures
-
-### 3. **Secure Defaults**
-- **Principle**: Default configurations should be secure, requiring explicit action to reduce security
-- **Implementation**: Use secure frameworks, libraries, and configuration templates
-- **AI Guidance**: AI should always choose secure defaults when making technical decisions
-- **Documentation**: All security decisions and configurations must be documented
-
-## Core Security Areas
-
-### 1. **Authentication & Authorization**
-
-**Simple, Effective Approach:**
-```
-Authentication Strategy:
-- Use established authentication libraries (OAuth 2.0, JWT, session-based)
-- Implement multi-factor authentication for admin accounts
-- Use secure password requirements and storage (bcrypt, scrypt)
-- Implement account lockout after failed attempts
-- Session management with secure cookies
-
-Authorization Strategy:
-- Role-based access control (RBAC) with clear role definitions
-- Principle of least privilege
-- Regular access reviews and cleanup
-- Clear separation between user and admin functions
-```
-
-**AI Implementation Guidelines:**
-- Always use established authentication libraries, never roll custom authentication
-- Implement password hashing with salt using bcrypt or similar
-- Use secure session management with httpOnly, secure, and sameSite cookie flags
-- Implement proper logout functionality that invalidates sessions
-- Add rate limiting to authentication endpoints
-
-### 2. **Data Protection**
-
-**Data Security Principles:**
-```
-Data at Rest:
-- Encrypt sensitive data in databases using AES-256
-- Use database-level encryption for sensitive columns
-- Implement proper key management (external key stores)
-- Regular database backups with encryption
-
-Data in Transit:
-- HTTPS/TLS 1.3 for all communications
-- Certificate management and renewal
-- Secure API communications
-- Encrypted database connections
-
-Data in Use:
-- Minimize data exposure in application memory
-- Secure data processing and transformation
-- Proper data sanitization and validation
-```
-
-**AI Implementation Guidelines:**
-- Always validate and sanitize user input
-- Use parameterized queries to prevent SQL injection
-- Implement proper error handling that doesn't expose sensitive data
-- Use environment variables for sensitive configuration
-- Implement data masking for logs and debugging
-
-### 3. **Application Security**
-
-**Common Vulnerability Prevention:**
-```
-Input Validation:
-- Validate all user inputs (type, length, format, range)
-- Use allowlists rather than blocklists
-- Implement proper encoding for output
-- Prevent injection attacks (SQL, XSS, command injection)
-
-Error Handling:
-- Generic error messages for users
-- Detailed error logging for developers (see LOGGING_STRATEGY.md)
-- Proper exception handling without information disclosure
-- Security event logging and monitoring
-
-Secure Communication:
-- API rate limiting and throttling
-- Request size limits
-- CORS configuration
-- Content Security Policy (CSP) headers
-```
-
-**AI Implementation Guidelines:**
-- Always validate input at the application boundary
-- Use framework-provided security features (CSRF protection, XSS prevention)
-- Implement proper error handling that logs security events
-- Use secure HTTP headers (HSTS, CSP, X-Frame-Options)
-- Implement API versioning and deprecation strategies
-
-### 4. **Infrastructure Security**
-
-**Simple Infrastructure Protection:**
-```
-Environment Security:
-- Separate development, staging, and production environments
-- Use external secret management (Doppler, AWS Secrets Manager)
-- Implement proper firewall rules and network segmentation
-- Regular security updates and patching
-
-Container Security:
-- Use minimal base images (Alpine Linux)
-- Scan container images for vulnerabilities
-- Implement proper user permissions (non-root containers)
-- Use secure container registries
-
-Deployment Security:
-- Automated security scanning in CI/CD pipeline
-- Secure deployment keys and credentials
-- Infrastructure as Code with security templates
-- Regular security assessments and reviews
-```
-
-**AI Implementation Guidelines:**
-- Use secure Docker base images and keep them updated
-- Implement proper file permissions and user management
-- Use secrets management for all sensitive configuration
-- Implement proper logging and monitoring for security events
-- Use infrastructure scanning tools in deployment pipeline
-
-## Security Implementation Process
-
-### Security Integration Flow
-
-```mermaid
-graph TD
-    A["Functional Design"] --> B["AI: Identify Security Requirements"]
-    B --> C["AI: Security Architecture Design"]
-    C --> D["AI: Implementation with Security"]
-    D --> E["AI: Security Testing"]
-    E --> F["AI: Security Validation"]
-    F --> G["Human: Security Review"]
-    G --> H{"Security Approved?"}
-    H -->|No| I["Address Security Issues"]
-    I --> C
-    H -->|Yes| J["Deployment with Security"]
+```python
+# DO: Validate inputs
+def process_user_input(user_data):
+    if not isinstance(user_data, str) or len(user_data) > 1000:
+        raise ValueError("Invalid input format or length")
     
-    style A fill:#e1f5fe
-    style J fill:#c8e6c9
-    style H fill:#ffcdd2
+    sanitized = escape_html(user_data.strip())
+    return sanitized
+
+# DON'T: Process raw inputs
+def process_user_input(user_data):
+    return user_data  # Dangerous!
 ```
 
-### Security Layers
+**Implementation Checklist:**
+- [ ] Validate data type, length, format, and range
+- [ ] Sanitize inputs before processing
+- [ ] Use allow-lists over deny-lists when possible
+- [ ] Reject invalid inputs with clear error messages
 
-```mermaid
-graph LR
-    A["Authentication"] --> B["Authorization"]
-    B --> C["Data Protection"]
-    C --> D["Application Security"]
-    D --> E["Infrastructure Security"]
-    E --> F["Monitoring & Response"]
-    
-    style A fill:#ffcdd2
-    style F fill:#c8e6c9
+### 2. Authentication & Authorization
+**Rule:** Implement proper identity verification and access control.
+
+```python
+# DO: Check authentication and authorization
+@require_authentication
+@require_permission("user:read")
+def get_user_profile(user_id):
+    if current_user.id != user_id and not current_user.is_admin:
+        raise PermissionError("Access denied")
+    return User.get(user_id)
+
+# DON'T: Skip authorization checks
+def get_user_profile(user_id):
+    return User.get(user_id)  # Anyone can access any user!
 ```
 
-### Phase 1: Security Requirements (During Functional Design)
+**Implementation Checklist:**
+- [ ] Authenticate users before granting access
+- [ ] Implement role-based access control (RBAC)
+- [ ] Use strong password policies
+- [ ] Implement session management with timeouts
+- [ ] Log authentication events
 
-**AI Responsibility**: Identify security requirements during functional design phase
+### 3. Data Protection
+**Rule:** Protect sensitive data in transit and at rest.
 
-**Security Requirements Identification:**
-- **Authentication Requirements**: Who needs access and how they authenticate
-- **Authorization Requirements**: What different users can do (role definitions)
-- **Data Protection Requirements**: What data is sensitive and how it's protected
-- **Compliance Requirements**: Any regulatory or business compliance needs
-- **Audit Requirements**: What security events need to be logged and tracked
+```python
+# DO: Encrypt sensitive data
+import bcrypt
+from cryptography.fernet import Fernet
 
-**AI Questions to Ask:**
-- "What types of users will access this system and what are their roles?"
-- "What data is sensitive and requires special protection?"
-- "Are there any compliance requirements (GDPR, HIPAA, etc.)?"
-- "What are the consequences if this data is compromised?"
-- "How should we handle user authentication and session management?"
+def hash_password(password):
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
-### Phase 2: Security Architecture (During Technical Design)
+def encrypt_data(data, key):
+    cipher = Fernet(key)
+    return cipher.encrypt(data.encode())
 
-**AI Responsibility**: Design security architecture and choose security technologies
-
-**Security Architecture Decisions:**
-- **Authentication Method**: Choose appropriate authentication approach
-- **Authorization Model**: Design role-based access control system
-- **Data Encryption**: Choose encryption methods for data at rest and in transit
-- **Security Monitoring**: Design security event logging and monitoring
-- **Incident Response**: Plan for security incident detection and response
-
-**AI Technical Decisions:**
-- Choose secure frameworks and libraries
-- Design secure API endpoints and data flows
-- Implement proper error handling and logging
-- Choose appropriate security headers and configurations
-- Design secure deployment and infrastructure patterns
-
-### Phase 3: Security Implementation (During Development)
-
-**AI Responsibility**: Implement security measures according to design
-
-**Security Implementation Checklist:**
-- [ ] Input validation and sanitization implemented
-- [ ] Authentication and authorization working correctly
-- [ ] Data encryption implemented for sensitive data
-- [ ] Security headers configured properly
-- [ ] Error handling doesn't expose sensitive information
-- [ ] Security events logged appropriately
-- [ ] Rate limiting and throttling implemented
-- [ ] Security testing included in test suite
-
-**AI Validation Questions:**
-- "Are all user inputs properly validated and sanitized?"
-- "Is authentication working correctly with proper session management?"
-- "Are security events being logged with appropriate detail?"
-- "Are error messages generic enough to not expose sensitive information?"
-- "Are all security headers configured correctly?"
-
-## Security Testing Strategy
-
-### 1. **Automated Security Testing**
-
-**Security Test Categories:**
-```
-Static Analysis:
-- Code scanning for security vulnerabilities
-- Dependency scanning for known vulnerabilities
-- Configuration scanning for security misconfigurations
-- Secret scanning to prevent credential exposure
-
-Dynamic Analysis:
-- Automated penetration testing
-- API security testing
-- Authentication and authorization testing
-- Input validation testing
+# DON'T: Store passwords in plaintext
+def store_password(password):
+    user.password = password  # Never do this!
 ```
 
-**AI Implementation:**
-- Integrate security scanning tools into CI/CD pipeline
-- Implement automated security tests for common vulnerabilities
-- Use security linting tools for code analysis
-- Implement dependency vulnerability scanning
+**Implementation Checklist:**
+- [ ] Use HTTPS for all data transmission
+- [ ] Hash passwords with salt using bcrypt/scrypt
+- [ ] Encrypt sensitive data at rest
+- [ ] Implement secure key management
+- [ ] Never log sensitive information
 
-### 2. **Manual Security Testing**
+### 4. SQL Injection Prevention
+**Rule:** Use parameterized queries for all database interactions.
 
-**Security Review Process:**
-```
-Code Review:
-- Security-focused code reviews
-- Authentication and authorization logic review
-- Input validation and error handling review
-- Security configuration review
+```python
+# DO: Use parameterized queries
+def get_user_by_email(email):
+    query = "SELECT * FROM users WHERE email = %s"
+    return db.execute(query, (email,))
 
-Penetration Testing:
-- Regular security assessments
-- Manual testing of authentication flows
-- Authorization boundary testing
-- Input validation testing
-```
-
-**AI Support:**
-- Generate security test cases based on functionality
-- Create security checklists for manual reviews
-- Implement security testing utilities and helpers
-- Document security test results and remediation
-
-## Security Monitoring and Incident Response
-
-### 1. **Security Event Monitoring**
-
-**Security Events to Monitor:**
-```
-Authentication Events:
-- Failed login attempts
-- Account lockouts
-- Password changes
-- Session anomalies
-
-Authorization Events:
-- Access denied events
-- Privilege escalation attempts
-- Unauthorized data access
-- Administrative actions
-
-Application Events:
-- Input validation failures
-- Error rate spikes
-- Unusual usage patterns
-- System configuration changes
+# DON'T: String concatenation
+def get_user_by_email(email):
+    query = f"SELECT * FROM users WHERE email = '{email}'"
+    return db.execute(query)  # SQL injection risk!
 ```
 
-**Integration with Logging Strategy:**
-- Use structured logging for security events (see `LOGGING_STRATEGY.md`)
-- Implement correlation IDs for security incident tracking
-- Use appropriate log levels for security events
-- Ensure security logs are tamper-evident and backed up
+**Implementation Checklist:**
+- [ ] Use ORM or parameterized queries exclusively
+- [ ] Validate database inputs
+- [ ] Implement least privilege database access
+- [ ] Monitor and log database access patterns
 
-### 2. **Incident Response**
-
-**Simple Incident Response Process:**
-```
-Detection:
-- Automated alerting for security events
-- Regular log review and analysis
-- User reporting of security concerns
-- System monitoring and anomaly detection
-
-Response:
-- Immediate containment of security incidents
-- Assessment of impact and scope
-- Communication to stakeholders
-- Documentation of incident and response
-
-Recovery:
-- System restoration and validation
-- Security improvements and patches
-- User communication and support
-- Post-incident review and lessons learned
-```
-
-**AI Role in Incident Response:**
-- Generate incident response checklists
-- Analyze logs for security incidents
-- Create incident documentation templates
-- Implement automated incident detection and alerting
-
-## Security Best Practices for AI Implementation
-
-### 1. **Secure Coding Practices**
-
-**AI Must Follow:**
-- Always validate and sanitize user inputs
-- Use parameterized queries for database operations
-- Implement proper error handling without information disclosure
-- Use secure defaults for all configurations
-- Follow principle of least privilege for all access controls
-
-### 2. **Security Documentation**
-
-**AI Must Document:**
-- All security decisions and their rationale
-- Security configurations and their purpose
-- Authentication and authorization flows
-- Data protection measures and encryption methods
-- Security testing procedures and results
-
-### 3. **Security Code Review**
-
-**AI Must Ensure:**
-- All security-sensitive code is properly reviewed
-- Security requirements are met in implementation
-- Security configurations are correct and documented
-- Security tests are comprehensive and passing
-- Security documentation is complete and accurate
-
-## Security Configuration Templates
-
-### 1. **Web Application Security Headers**
+### 5. Cross-Site Scripting (XSS) Prevention
+**Rule:** Escape all user-generated content in web applications.
 
 ```javascript
-// Express.js Security Headers Example
-const helmet = require('helmet');
+// DO: Escape user content
+function displayUserComment(comment) {
+    const escaped = escapeHtml(comment);
+    document.getElementById('comments').textContent = escaped;
+}
 
-app.use(helmet({
-  // Content Security Policy
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-    },
-  },
-  // HTTP Strict Transport Security
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true
-  },
-  // X-Frame-Options
-  frameguard: { action: 'deny' },
-  // X-Content-Type-Options
-  noSniff: true,
-  // Referrer Policy
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
-}));
+// DON'T: Insert raw user content
+function displayUserComment(comment) {
+    document.getElementById('comments').innerHTML = comment; // XSS risk!
+}
 ```
 
-### 2. **Database Security Configuration**
+**Implementation Checklist:**
+- [ ] Escape HTML content by default
+- [ ] Use Content Security Policy (CSP) headers
+- [ ] Validate and sanitize rich text content
+- [ ] Use framework-provided escaping functions
 
-```sql
--- Database Security Best Practices
--- Create application-specific database user
-CREATE USER 'app_user'@'localhost' IDENTIFIED BY 'strong_password';
+## Security Implementation Patterns
 
--- Grant minimal necessary permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON app_database.* TO 'app_user'@'localhost';
+### Secure API Design
+```python
+from functools import wraps
+import jwt
 
--- Enable SSL for database connections
--- Configure in database connection string
-const dbConfig = {
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  ssl: {
-    rejectUnauthorized: true,
-    ca: fs.readFileSync(process.env.DB_SSL_CA),
-  }
-};
+def require_api_key(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get('X-API-Key')
+        if not validate_api_key(api_key):
+            return {'error': 'Invalid API key'}, 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/api/users', methods=['GET'])
+@require_api_key
+@rate_limit('100/hour')
+def get_users():
+    return jsonify(users)
 ```
 
-### 3. **API Security Configuration**
+### Error Handling Security
+```python
+# DO: Generic error messages
+try:
+    user = authenticate(username, password)
+except AuthenticationError:
+    return {"error": "Invalid credentials"}, 401
 
-```javascript
-// API Security Middleware
-const rateLimit = require('express-rate-limit');
-const slowDown = require('express-slow-down');
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
-
-// Slow down repeated requests
-const speedLimiter = slowDown({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  delayAfter: 50, // allow 50 requests per windowMs without delay
-  delayMs: 500 // add 500ms delay per request after delayAfter
-});
-
-// Apply to all routes
-app.use('/api/', limiter);
-app.use('/api/', speedLimiter);
-
-// Input validation middleware
-const { body, validationResult } = require('express-validator');
-
-const validateInput = [
-  body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 8 }).matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/),
-  (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        error: 'Invalid input data',
-        // Don't expose detailed validation errors to users
-        details: process.env.NODE_ENV === 'development' ? errors.array() : undefined
-      });
-    }
-    next();
-  }
-];
+# DON'T: Detailed error messages
+try:
+    user = authenticate(username, password)
+except UserNotFoundError:
+    return {"error": "User does not exist"}, 401  # Information disclosure
+except InvalidPasswordError:
+    return {"error": "Wrong password"}, 401  # Information disclosure
 ```
 
-## Security Checklist for AI Implementation
+### Secure Configuration
+```python
+# DO: Environment-based configuration
+import os
 
-### Pre-Implementation Security Review
-- [ ] Security requirements identified during functional design
-- [ ] Security architecture defined during technical design
-- [ ] Authentication and authorization approach chosen
-- [ ] Data protection measures planned
-- [ ] Security testing strategy defined
-- [ ] Incident response plan created
+DATABASE_URL = os.getenv('DATABASE_URL')
+SECRET_KEY = os.getenv('SECRET_KEY')
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-### Implementation Security Checklist
-- [ ] Input validation implemented for all user inputs
-- [ ] Authentication system implemented with secure defaults
-- [ ] Authorization controls implemented with proper role separation
-- [ ] Data encryption implemented for sensitive data
-- [ ] Security headers configured correctly
-- [ ] Error handling doesn't expose sensitive information
-- [ ] Security events logged appropriately
-- [ ] Rate limiting and throttling implemented
-- [ ] Security testing integrated into CI/CD pipeline
-- [ ] Security documentation complete and accurate
+# DON'T: Hardcoded secrets
+DATABASE_URL = "postgresql://user:password@localhost/db"  # Never!
+SECRET_KEY = "hardcoded-secret-key"  # Never!
+```
 
-### Post-Implementation Security Review
-- [ ] Security tests passing
-- [ ] Security configuration validated
-- [ ] Security documentation reviewed and approved
+## Security Checklist for AI Assistants
+
+When implementing any feature, verify:
+
+### Input Security
+- [ ] All inputs validated before processing
+- [ ] File uploads scanned and restricted
+- [ ] URL parameters sanitized
+- [ ] Form data escaped and validated
+
+### Authentication Security
+- [ ] Authentication required for protected resources
+- [ ] Session management implemented correctly
+- [ ] Password policies enforced
+- [ ] Multi-factor authentication considered
+
+### Data Security
+- [ ] Sensitive data encrypted at rest
+- [ ] HTTPS used for all communications
+- [ ] Database queries parameterized
+- [ ] Logs free of sensitive information
+
+### Application Security
+- [ ] Dependencies updated and vulnerability-free
+- [ ] Security headers implemented
+- [ ] Error messages don't reveal system details
+- [ ] Rate limiting implemented for APIs
+
+### Infrastructure Security
+- [ ] Environment variables used for secrets
+- [ ] Least privilege access implemented
 - [ ] Security monitoring and alerting configured
-- [ ] Incident response procedures tested
-- [ ] Security training and handoff completed
+- [ ] Backup and recovery procedures tested
 
-**AI Responsibility**: Ensure all security checklist items are completed before considering implementation finished. 
+## Common Vulnerabilities to Avoid
+
+### 1. Injection Attacks
+- SQL injection via string concatenation
+- Command injection via unsanitized system calls
+- LDAP injection in directory queries
+
+### 2. Broken Authentication
+- Weak password policies
+- Session fixation vulnerabilities
+- Missing logout functionality
+
+### 3. Sensitive Data Exposure
+- Unencrypted data transmission
+- Plaintext password storage
+- Excessive data in error messages
+
+### 4. Broken Access Control
+- Missing authorization checks
+- Insecure direct object references
+- Privilege escalation vulnerabilities
+
+### 5. Security Misconfiguration
+- Default credentials in production
+- Unnecessary services enabled
+- Missing security headers
+
+## Security Testing
+
+### Manual Testing
+- [ ] Test authentication bypass attempts
+- [ ] Verify authorization enforcement
+- [ ] Check input validation edge cases
+- [ ] Review error message content
+
+### Automated Testing
+- [ ] Run dependency vulnerability scans
+- [ ] Implement security unit tests
+- [ ] Use static code analysis tools
+- [ ] Perform automated penetration testing
+
+## Incident Response
+
+### When Security Issues Are Discovered
+1. **Assess impact** and affected systems
+2. **Document** the vulnerability details
+3. **Implement** immediate mitigation
+4. **Notify** stakeholders and users if needed
+5. **Update** code and security measures
+6. **Review** and improve security processes
+
+### Security Logging
+Log these security events:
+- Authentication attempts (success/failure)
+- Authorization failures
+- Input validation failures
+- Administrative actions
+- Data access patterns
+
+## Quick Reference
+
+**Always validate inputs** → Use type checking, length limits, format validation
+**Always authenticate** → Require valid credentials before access
+**Always authorize** → Check permissions for specific actions
+**Always encrypt** → Use HTTPS, hash passwords, encrypt sensitive data
+**Always log** → Track security events for monitoring and incident response
+
+For detailed implementation examples, refer to [`QUICK_REFERENCE_CARDS.md`](QUICK_REFERENCE_CARDS.md). 
